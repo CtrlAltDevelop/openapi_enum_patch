@@ -12,6 +12,7 @@ import 'models/enum_override.dart';
 import 'normalizer/schema_normalizer.dart';
 import 'output_scanner.dart';
 import 'registry_builder.dart';
+import 'reorganizer/model_reorganizer.dart';
 
 /// What a patch run did.
 class PatchResult {
@@ -116,6 +117,43 @@ class EnumPatcher {
       );
     }
     return _registryBuilder.build(documents);
+  }
+
+  /// Groups the flat generated models into per-namespace folders and strips
+  /// the redundant prefix from their type names.
+  ///
+  /// Run after [patch] and before `build_runner`. [rewriteRoots] are the source
+  /// roots whose type references need updating, relative to [root].
+  ReorganizeResult reorganizeModels({
+    List<String> rewriteRoots = const ['lib', 'test'],
+    Map<String, String>? groups,
+  }) {
+    final prefixes = groups ?? _namespacePrefixes();
+    if (prefixes.isEmpty) return const ReorganizeResult.noop();
+
+    return ModelReorganizer(groups: prefixes).run(
+      modelsDir: modelsDir,
+      apiDir: outputDir,
+      rewriteRoots: [
+        for (final r in rewriteRoots) Directory(p.join(root, r)),
+      ],
+    );
+  }
+
+  /// Reads every configured schema and derives the namespace prefixes.
+  Map<String, String> _namespacePrefixes() {
+    final documents = <Map<String, Object?>>[];
+    for (final scheme in config.schemes) {
+      final file = File(p.join(root, scheme.schemaPath));
+      if (!file.existsSync()) continue;
+      documents.add(
+        _registryBuilder.decode(
+          file.readAsStringSync(),
+          source: scheme.schemaPath,
+        ),
+      );
+    }
+    return _registryBuilder.namespacePrefixes(documents);
   }
 
   /// Audits override coverage without writing anything.

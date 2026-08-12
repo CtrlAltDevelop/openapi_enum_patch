@@ -53,6 +53,35 @@ class RegistryBuilder {
     return decoded;
   }
 
+  /// The namespace prefix of every component schema, as
+  /// `file_prefix -> ClassPrefix` (`crm -> Crm`, `ai_analyst -> AiAnalyst`).
+  ///
+  /// Taken from the first dotted segment of each `components.schemas` key,
+  /// which is exactly what `swagger_parser` folds into the generated file and
+  /// class names. Keys with no dot contribute nothing: they are not namespaced,
+  /// so there is no prefix to group or strip.
+  Map<String, String> namespacePrefixes(
+    Iterable<Map<String, Object?>> documents,
+  ) {
+    final prefixes = <String, String>{};
+    for (final document in documents) {
+      final components = document['components'];
+      if (components is! Map) continue;
+      final schemas = components['schemas'];
+      if (schemas is! Map) continue;
+
+      for (final key in schemas.keys) {
+        final name = key.toString();
+        final dot = name.indexOf('.');
+        if (dot <= 0) continue;
+        final className = DartNaming.toClassName(name.substring(0, dot));
+        if (className.isEmpty) continue;
+        prefixes[DartNaming.toFileStem(className)] = className;
+      }
+    }
+    return prefixes;
+  }
+
   Map<String, EnumEntry> _entriesOf(Map<String, Object?> document) {
     final components = document['components'];
     if (components is! Map) return const {};

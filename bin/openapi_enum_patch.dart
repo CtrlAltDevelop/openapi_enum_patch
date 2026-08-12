@@ -4,7 +4,7 @@ import 'package:args/args.dart';
 import 'package:openapi_enum_patch/openapi_enum_patch.dart';
 import 'package:path/path.dart' as p;
 
-const _version = '0.1.0';
+const _version = '0.2.0';
 
 Future<void> main(List<String> arguments) async {
   final parser = _buildArgParser();
@@ -31,7 +31,7 @@ Future<void> main(List<String> arguments) async {
   }
 
   final command = args.rest.isEmpty ? 'patch' : args.rest.first;
-  if (!const {'normalize', 'patch', 'audit'}.contains(command)) {
+  if (!const {'normalize', 'patch', 'audit', 'reorganize'}.contains(command)) {
     stderr
       ..writeln('Unknown command "$command".')
       ..writeln()
@@ -77,6 +77,9 @@ Future<void> main(List<String> arguments) async {
           patcher.patchDryRunReport(overrides),
           args.option('overrides')!,
         );
+      case 'reorganize':
+        final result = patcher.reorganizeModels();
+        stdout.writeln('  ${result.describe()}');
       case 'patch':
         final result = patcher.patch(overrides);
         _printPatch(result);
@@ -142,14 +145,14 @@ ArgParser _buildArgParser() => ArgParser()
   ..addOption(
     'config',
     abbr: 'c',
-    defaultsTo: 'swagger_tools/swagger_parser.yaml',
+    defaultsTo: 'swagger_parser.yaml',
     help: 'Path to swagger_parser.yaml, relative to --root.',
     valueHelp: 'path',
   )
   ..addOption(
     'overrides',
     abbr: 'o',
-    defaultsTo: 'swagger_tools/enum_overrides.yaml',
+    defaultsTo: 'enum_overrides.yaml',
     help: 'Path to enum_overrides.yaml, relative to --root.',
     valueHelp: 'path',
   )
@@ -172,5 +175,8 @@ Commands:
   patch       Generate skipped enum files, apply overrides, print the audit.
               Run AFTER swagger_parser. (default)
   audit       Print the audit only, changing nothing.
+  reorganize  Group flat models into per-namespace folders and strip the
+              redundant prefix from their type names. Run AFTER patch and
+              BEFORE build_runner.
 
 ${parser.usage}''';
