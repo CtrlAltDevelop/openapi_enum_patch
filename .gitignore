@@ -1,0 +1,14 @@
+# Dart / pub
+.dart_tool/
+.packages
+build/
+pubspec.lock
+
+# Generated example output (regenerate with the example script)
+example/generated/
+
+# Editors / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
