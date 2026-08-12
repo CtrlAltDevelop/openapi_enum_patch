@@ -3,8 +3,8 @@ description: >-
   Give real names to the integer enums swagger_parser generates from OpenAPI,
   fill in the enum files it skips, and audit which enums still need naming.
 version: 0.1.0
-repository: https://github.com/m-zarif/openapi_enum_patch
-issue_tracker: https://github.com/m-zarif/openapi_enum_patch/issues
+repository: https://github.com/CtrlAltDevelop/openapi_enum_patch
+issue_tracker: https://github.com/CtrlAltDevelop/openapi_enum_patch/issues
 
 topics:
   - openapi
