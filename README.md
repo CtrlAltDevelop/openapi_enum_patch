@@ -31,6 +31,21 @@ otherwise silently rots as the API grows.
 dart pub add --dev openapi_enum_patch
 ```
 
+Or add it to `pubspec.yaml` yourself. It is a build-time tool, so it belongs in
+`dev_dependencies` — it never ships in your app:
+
+```yaml
+dev_dependencies:
+  openapi_enum_patch: ^0.1.0
+  swagger_parser: ^1.44.1   # the generator this wraps
+```
+
+then:
+
+```bash
+dart pub get      # or: flutter pub get
+```
+
 ## Use
 
 Two commands wrap your existing generation step:
