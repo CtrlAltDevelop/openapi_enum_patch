@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0
+
+- Added the `reorganize` command: groups the flat models `swagger_parser`
+  emits into per-namespace folders, routes enums into an `enums/` subfolder,
+  and strips the now-redundant namespace prefix from type names — rewriting
+  every relative import, `part` directive, model URI and type reference across
+  your sources. Cross-service name collisions keep their prefix so the result
+  still compiles. Idempotent.
+- Namespace groups are derived from the schema keys via
+  `RegistryBuilder.namespacePrefixes`, so nothing has to be hard-coded; pass
+  `groups` to `reorganizeModels` to override.
+- **Breaking:** the `--config` and `--overrides` defaults are now
+  `swagger_parser.yaml` and `enum_overrides.yaml` at the project root, instead
+  of paths under a `swagger_tools/` folder. Pass `-c` / `-o` if your files live
+  elsewhere.
+
 ## 0.1.0
 
 Initial release.

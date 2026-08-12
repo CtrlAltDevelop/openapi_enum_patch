@@ -54,6 +54,7 @@ Two commands wrap your existing generation step:
 dart run openapi_enum_patch normalize          # before swagger_parser
 dart run swagger_parser
 dart run openapi_enum_patch patch              # after swagger_parser
+dart run openapi_enum_patch reorganize         # before build_runner
 dart run build_runner build --delete-conflicting-outputs
 ```
 
@@ -61,6 +62,7 @@ dart run build_runner build --delete-conflicting-outputs
 | --- | --- | --- |
 | `normalize` | Before | Fixes `{version}` path templates and bare schema names |
 | `patch` | After | Writes skipped enum files, applies overrides, prints the audit |
+| `reorganize` | After `patch` | Groups flat models into per-namespace folders |
 | `audit` | Any time | Prints the audit only, changing nothing |
 
 | Option | Default |
@@ -136,6 +138,41 @@ every schema and rewrites all matching `$ref`s.
 > imports would break.
 
 Both passes are **idempotent** — re-downloading a schema and re-running is safe.
+
+## What `reorganize` fixes
+
+`swagger_parser` names every model after its full namespace and writes them all
+into one flat folder:
+
+```
+models/crm_account_types_admin_dtos_account_type_feature_dto.dart
+class CrmAccountTypesAdminDtosAccountTypeFeatureDto
+```
+
+`reorganize` groups them by namespace and drops the prefix that the folder now
+carries:
+
+```
+models/crm/account_types_admin_dtos_account_type_feature_dto.dart
+class AccountTypesAdminDtosAccountTypeFeatureDto
+```
+
+Enums additionally lose their `Enums` segment, since they land in an `enums/`
+subfolder: `crm_enums_account_status` becomes `crm/enums/account_status.dart`
+holding `AccountStatus`.
+
+It rewrites everything that pointed at the old names — relative imports and
+`part` directives inside the generated tree, and model URIs plus type
+references (including dart_mappable's `Mapper` / `CopyWith` derivatives) across
+`lib/` and `test/`.
+
+Groups come from the first dotted segment of each schema key, so nothing is
+hard-coded. When two namespaces define the same type name, **both keep their
+prefix** — the files never collide because they are in different folders, but
+the types would, so stripping is skipped for exactly those.
+
+Run it after `patch` and before `build_runner`; the `.mapper.dart` parts move
+with their source and are regenerated afterwards. Re-running is a no-op.
 
 ## Why `patch` generates files at all
 
