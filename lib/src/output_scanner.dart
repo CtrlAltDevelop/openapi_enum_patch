@@ -7,8 +7,9 @@ import 'package:path/path.dart' as p;
 class OutputScanner {
   const OutputScanner();
 
-  static final RegExp _modelImport =
-      RegExp(r"""import '\.\./models/([^']+)\.dart'""");
+  static final RegExp _modelImport = RegExp(
+    r"""import '\.\./models/([^']+)\.dart'""",
+  );
   static const _clientSuffix = '_client.dart';
   static const _mapperSuffix = '.mapper.dart';
 
@@ -23,9 +24,10 @@ class OutputScanner {
     if (!modelsDir.existsSync()) return {};
 
     final stems = <String>{};
-    for (final file in modelsDir
-        .listSync(recursive: true, followLinks: false)
-        .whereType<File>()) {
+    for (final file
+        in modelsDir
+            .listSync(recursive: true, followLinks: false)
+            .whereType<File>()) {
       if (!file.path.endsWith('.dart')) continue;
       if (file.path.endsWith(_mapperSuffix)) continue;
 

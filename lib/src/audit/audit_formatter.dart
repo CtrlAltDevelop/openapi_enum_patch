@@ -45,8 +45,8 @@ class AuditFormatter {
   }
 
   String _label(AuditIssue issue) => switch (issue) {
-        AuditIssue.missingOverride => 'values',
-        AuditIssue.missingNames => 'unnamed',
-        AuditIssue.staleNames => 'unknown',
-      };
+    AuditIssue.missingOverride => 'values',
+    AuditIssue.missingNames => 'unnamed',
+    AuditIssue.staleNames => 'unknown',
+  };
 }

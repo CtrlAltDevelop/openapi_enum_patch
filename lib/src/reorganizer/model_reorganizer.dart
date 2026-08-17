@@ -12,10 +12,10 @@ class ReorganizeResult {
   });
 
   const ReorganizeResult.noop()
-      : moved = 0,
-        groups = const [],
-        renamed = 0,
-        collisionsKept = 0;
+    : moved = 0,
+      groups = const [],
+      renamed = 0,
+      collisionsKept = 0;
 
   /// Number of model files moved into a namespace folder.
   final int moved;
@@ -34,9 +34,9 @@ class ReorganizeResult {
 
   String describe() => changed
       ? 'moved $moved models into ${groups.length} namespace folders; '
-          'renamed $renamed classes'
-          '${collisionsKept > 0 ? ', kept $collisionsKept prefixed to avoid '
-              'collisions' : ''}'
+            'renamed $renamed classes'
+            '${collisionsKept > 0 ? ', kept $collisionsKept prefixed to avoid '
+                      'collisions' : ''}'
       : 'models already reorganized';
 }
 
@@ -94,8 +94,9 @@ class ModelReorganizer {
 
   final String enumsSubdirectory;
 
-  static final RegExp _reference =
-      RegExp(r"""(part\s+of|import|export|part)\s+'([^']+)'""");
+  static final RegExp _reference = RegExp(
+    r"""(part\s+of|import|export|part)\s+'([^']+)'""",
+  );
 
   static final RegExp _declaration = RegExp(
     r'^\s*(?:@\w+(?:\([^)]*\))?\s*)*'
@@ -138,12 +139,13 @@ class ModelReorganizer {
   Map<String, _Move> _planMoves(Directory modelsDir) {
     final moves = <String, _Move>{};
 
-    final names = modelsDir
-        .listSync(followLinks: false)
-        .whereType<File>()
-        .map((f) => p.basename(f.path))
-        .toList()
-      ..sort();
+    final names =
+        modelsDir
+            .listSync(followLinks: false)
+            .whereType<File>()
+            .map((f) => p.basename(f.path))
+            .toList()
+          ..sort();
 
     for (final name in names) {
       final stem = _stemOf(name);
@@ -155,7 +157,8 @@ class ModelReorganizer {
       // Enum-ness is only visible on the source file; the mapper part carries
       // no annotation.
       final source = File(p.join(modelsDir.path, '$stem$_dartExtension'));
-      final isEnum = source.existsSync() &&
+      final isEnum =
+          source.existsSync() &&
           source.readAsStringSync().contains('@MappableEnum');
 
       final rest = stem == group ? stem : stem.substring(group.length + 1);

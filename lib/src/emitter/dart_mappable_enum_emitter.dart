@@ -20,8 +20,10 @@ class DartMappableEnumEmitter implements EnumEmitter {
     final buffer = StringBuffer()
       ..writeln('// coverage:ignore-file')
       ..writeln('// GENERATED CODE - DO NOT MODIFY BY HAND')
-      ..writeln('// ignore_for_file: type=lint, unused_import, '
-          'invalid_annotation_target, unnecessary_import')
+      ..writeln(
+        '// ignore_for_file: type=lint, unused_import, '
+        'invalid_annotation_target, unnecessary_import',
+      )
       ..writeln()
       ..writeln("import 'dart:async';")
       ..writeln()
@@ -67,27 +69,35 @@ class DartMappableEnumEmitter implements EnumEmitter {
       ..writeln('FutureOr<$className> deserialize$className($dartType json) =>')
       ..writeln('    ${className}Mapper.fromValue(json);')
       ..writeln()
-      ..writeln('FutureOr<List<$className>> '
-          'deserialize${className}List(List<$dartType> json) =>')
+      ..writeln(
+        'FutureOr<List<$className>> '
+        'deserialize${className}List(List<$dartType> json) =>',
+      )
       ..writeln('    json.map(${className}Mapper.fromValue).toList();')
       ..writeln()
-      ..writeln('FutureOr<$dartType?> '
-          'serialize$className($className? object) =>')
+      ..writeln(
+        'FutureOr<$dartType?> '
+        'serialize$className($className? object) =>',
+      )
       ..writeln('    object?.toValue() as $dartType?;')
       ..writeln()
-      ..writeln('FutureOr<List<$dartType?>> '
-          'serialize${className}List(List<$className>? objects) =>')
-      ..writeln('    objects?.map((e) => e.toValue() as $dartType?).toList() '
-          '?? [];');
+      ..writeln(
+        'FutureOr<List<$dartType?>> '
+        'serialize${className}List(List<$className>? objects) =>',
+      )
+      ..writeln(
+        '    objects?.map((e) => e.toValue() as $dartType?).toList() '
+        '?? [];',
+      );
   }
 
   /// String values must be quoted; integers must not.
   String _literal(Object value) {
     if (value is int) return '$value';
-    final escaped = value.toString().replaceAll(r'\', r'\\').replaceAll(
-          "'",
-          r"\'",
-        );
+    final escaped = value
+        .toString()
+        .replaceAll(r'\', r'\\')
+        .replaceAll("'", r"\'");
     return "'$escaped'";
   }
 }

@@ -32,8 +32,9 @@ void main() {
   });
 
   test('predicts the generated class name and file stem', () {
-    final entry =
-        _builder.buildFromJson(_schema).bySchemaKey('CRM.Enums.AccountStatus');
+    final entry = _builder
+        .buildFromJson(_schema)
+        .bySchemaKey('CRM.Enums.AccountStatus');
 
     expect(entry, isNotNull);
     expect(entry!.className, 'CrmEnumsAccountStatus');
@@ -75,8 +76,11 @@ void main() {
     expect(
       () => _builder.buildFromJson('{oops', source: 'crm.json'),
       throwsA(
-        isA<SchemaFormatException>()
-            .having((e) => e.toString(), 'message', contains('crm.json')),
+        isA<SchemaFormatException>().having(
+          (e) => e.toString(),
+          'message',
+          contains('crm.json'),
+        ),
       ),
     );
   });

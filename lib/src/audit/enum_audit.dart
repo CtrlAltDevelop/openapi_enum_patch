@@ -16,20 +16,17 @@ enum AuditIssue {
 
   /// A short human label used as the report section heading.
   String get shortName => switch (this) {
-        AuditIssue.missingOverride => 'MISSING OVERRIDE',
-        AuditIssue.missingNames => 'MISSING NAMES',
-        AuditIssue.staleNames => 'STALE NAMES',
-      };
+    AuditIssue.missingOverride => 'MISSING OVERRIDE',
+    AuditIssue.missingNames => 'MISSING NAMES',
+    AuditIssue.staleNames => 'STALE NAMES',
+  };
 
   /// One line explaining why the issue matters.
   String get explanation => switch (this) {
-        AuditIssue.missingOverride =>
-          'integer enums generate as value0, value1, …',
-        AuditIssue.missingNames =>
-          'override exists but does not name every value',
-        AuditIssue.staleNames =>
-          'override names a value absent from the schema',
-      };
+    AuditIssue.missingOverride => 'integer enums generate as value0, value1, …',
+    AuditIssue.missingNames => 'override exists but does not name every value',
+    AuditIssue.staleNames => 'override names a value absent from the schema',
+  };
 }
 
 /// One problem found for one enum.

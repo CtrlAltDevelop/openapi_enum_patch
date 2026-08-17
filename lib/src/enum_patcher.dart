@@ -52,13 +52,12 @@ class EnumPatcher {
     RegistryBuilder? registryBuilder,
     OutputScanner? scanner,
     EnumAuditor? auditor,
-  })  : _emitter = emitter ??
-            DartMappableEnumEmitter(
-              useFlutterCompute: config.useFlutterCompute,
-            ),
-        _registryBuilder = registryBuilder ?? const RegistryBuilder(),
-        _scanner = scanner ?? const OutputScanner(),
-        _auditor = auditor ?? const EnumAuditor();
+  }) : _emitter =
+           emitter ??
+           DartMappableEnumEmitter(useFlutterCompute: config.useFlutterCompute),
+       _registryBuilder = registryBuilder ?? const RegistryBuilder(),
+       _scanner = scanner ?? const OutputScanner(),
+       _auditor = auditor ?? const EnumAuditor();
 
   /// The project root that all config paths are relative to.
   final String root;
@@ -134,9 +133,7 @@ class EnumPatcher {
     return ModelReorganizer(groups: prefixes).run(
       modelsDir: modelsDir,
       apiDir: outputDir,
-      rewriteRoots: [
-        for (final r in rewriteRoots) Directory(p.join(root, r)),
-      ],
+      rewriteRoots: [for (final r in rewriteRoots) Directory(p.join(root, r))],
     );
   }
 
@@ -158,10 +155,10 @@ class EnumPatcher {
 
   /// Audits override coverage without writing anything.
   AuditReport patchDryRunReport(EnumOverrides overrides) => _auditor.audit(
-        registry: buildRegistry(),
-        overrides: overrides,
-        generatedStems: _scanner.generatedStems(modelsDir),
-      );
+    registry: buildRegistry(),
+    overrides: overrides,
+    generatedStems: _scanner.generatedStems(modelsDir),
+  );
 
   /// Runs the post-generation passes. Run this *after* `swagger_parser`.
   PatchResult patch(EnumOverrides overrides) {

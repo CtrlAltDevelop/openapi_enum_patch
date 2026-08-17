@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0
+
+First stable release. The API has settled across the `normalize`, `patch`,
+`audit` and `reorganize` commands, so the package now commits to semantic
+versioning — no breaking changes without a 2.0.0.
+
+- **Breaking:** the SDK constraint is now `^3.13.0`. Verified against Dart
+  3.13.0 and Flutter 3.47.0.
+- Reformatted the whole package with the Dart 3.7+ formatter ("tall style").
+  Formatting only — no behaviour changes.
+- Bumped `args`, `meta`, `path`, `yaml`, `lints` and `test` to current.
+
 ## 0.2.0
 
 - Added the `reorganize` command: groups the flat models `swagger_parser`

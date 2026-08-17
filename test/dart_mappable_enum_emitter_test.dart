@@ -62,16 +62,20 @@ void main() {
       isIntegerEnum: false,
     );
 
-    final source =
-        const DartMappableEnumEmitter().emit(stringEntry, const EnumOverride());
+    final source = const DartMappableEnumEmitter().emit(
+      stringEntry,
+      const EnumOverride(),
+    );
 
     expect(source, contains("@MappableValue('USD')\n  usd,"));
     expect(source, contains("@MappableValue('EUR')\n  eur;"));
   });
 
   test('omits compute helpers by default', () {
-    final source =
-        const DartMappableEnumEmitter().emit(_entry, const EnumOverride());
+    final source = const DartMappableEnumEmitter().emit(
+      _entry,
+      const EnumOverride(),
+    );
 
     expect(source, isNot(contains('deserializeCrmEnumsAccountStatus')));
   });

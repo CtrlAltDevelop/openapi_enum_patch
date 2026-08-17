@@ -30,11 +30,9 @@ void main() {
     File(p.join(modelsDir.path, '$stem.dart')).writeAsStringSync(contents);
   }
 
-  ReorganizeResult run() => const ModelReorganizer(groups: groups).run(
-        modelsDir: modelsDir,
-        apiDir: apiDir,
-        rewriteRoots: [libDir],
-      );
+  ReorganizeResult run() =>
+      const ModelReorganizer(groups: groups)
+          .run(modelsDir: modelsDir, apiDir: apiDir, rewriteRoots: [libDir]);
 
   String read(String relative) =>
       File(p.join(modelsDir.path, relative)).readAsStringSync();
@@ -47,9 +45,9 @@ void main() {
       'crm_account_types_dtos_feature_dto',
       'class CrmAccountTypesDtosFeatureDto {}',
     );
-    File(p.join(
-            modelsDir.path, 'crm_account_types_dtos_feature_dto.mapper.dart'))
-        .writeAsStringSync('// mapper');
+    File(
+      p.join(modelsDir.path, 'crm_account_types_dtos_feature_dto.mapper.dart'),
+    ).writeAsStringSync('// mapper');
 
     final result = run();
 
@@ -154,10 +152,7 @@ void main() {
     run();
 
     final text = usage.readAsStringSync();
-    expect(
-      text,
-      contains('generated/api_clients/models/crm/order_dto.dart'),
-    );
+    expect(text, contains('generated/api_clients/models/crm/order_dto.dart'));
     expect(text, contains('OrderDto build() => OrderDto();'));
     expect(text, isNot(contains('CrmOrderDto')));
   });

@@ -31,9 +31,8 @@ void main(List<String> arguments) {
 
   final report = patcher.patchDryRunReport(overrides);
   stdout.write(
-    const AuditFormatter(
-      overridesPath: 'swagger_tools/enum_overrides.yaml',
-    ).format(report),
+    const AuditFormatter(overridesPath: 'swagger_tools/enum_overrides.yaml')
+        .format(report),
   );
 
   if (!report.isClean) exitCode = 1;

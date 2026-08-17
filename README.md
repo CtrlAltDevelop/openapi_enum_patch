@@ -25,6 +25,12 @@ if (account.status == CrmEnumsAccountStatus.disabled) { … }
 It also tells you which enums you have **not** named yet — the part that
 otherwise silently rots as the API grows.
 
+## Requirements
+
+Dart SDK `^3.13.0` — verified against Dart 3.13.0 and Flutter 3.47.0. This is a
+pure Dart CLI package, so it carries no Flutter SDK constraint and works from
+either a `dart` or a `flutter` project.
+
 ## Install
 
 ```bash
@@ -36,7 +42,7 @@ Or add it to `pubspec.yaml` yourself. It is a build-time tool, so it belongs in
 
 ```yaml
 dev_dependencies:
-  openapi_enum_patch: ^0.2.0
+  openapi_enum_patch: ^1.0.0
   swagger_parser: ^1.44.1   # the generator this wraps
 ```
 

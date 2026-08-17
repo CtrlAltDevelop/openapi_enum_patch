@@ -56,10 +56,11 @@ class EnumRegistry {
 
   /// Reverse index from schema key to file stem, for override lookups.
   Map<String, String> get stemsBySchemaKey => {
-        for (final entry in entries.entries) entry.value.schemaKey: entry.key,
-      };
+    for (final entry in entries.entries) entry.value.schemaKey: entry.key,
+  };
 
   /// Entries sorted by schema key, for stable report output.
-  List<EnumEntry> get sortedBySchemaKey => entries.values.toList()
-    ..sort((a, b) => a.schemaKey.compareTo(b.schemaKey));
+  List<EnumEntry> get sortedBySchemaKey =>
+      entries.values.toList()
+        ..sort((a, b) => a.schemaKey.compareTo(b.schemaKey));
 }

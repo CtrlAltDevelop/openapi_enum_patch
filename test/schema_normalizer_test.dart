@@ -40,9 +40,7 @@ void main() {
     });
 
     test('falls back to version 1 when info.version has no number', () {
-      final document = _doc(
-        '{"paths": {"/api/v{version}/X": {"get": {}}}}',
-      );
+      final document = _doc('{"paths": {"/api/v{version}/X": {"get": {}}}}');
 
       final result = _normalizer.normalize(document);
 
@@ -106,8 +104,10 @@ void main() {
           'SocialService.InvestorStatus',
         ]),
       );
-      final ref = ((schemas['SocialService.AccountData']! as Map)['properties']
-          as Map)['status'] as Map;
+      final ref =
+          ((schemas['SocialService.AccountData']! as Map)['properties']
+                  as Map)['status']
+              as Map;
       expect(ref[r'$ref'], '#/components/schemas/SocialService.InvestorStatus');
     });
 
@@ -119,10 +119,9 @@ void main() {
       final result = _normalizer.normalize(document, namespacePrefix: 'Crm');
 
       expect(result.prefixedSchemas, 0);
-      expect(
-        ((document['components']! as Map)['schemas'] as Map).keys,
-        ['CRM.Enums.Status'],
-      );
+      expect(((document['components']! as Map)['schemas'] as Map).keys, [
+        'CRM.Enums.Status',
+      ]);
     });
 
     test('leaves refs to unknown schemas alone', () {
@@ -148,7 +147,9 @@ void main() {
 
   test('toNamespacePrefix pascal-cases a scheme name', () {
     expect(
-        SchemaNormalizer.toNamespacePrefix('social_service'), 'SocialService');
+      SchemaNormalizer.toNamespacePrefix('social_service'),
+      'SocialService',
+    );
     expect(SchemaNormalizer.toNamespacePrefix('crm'), 'Crm');
   });
 }

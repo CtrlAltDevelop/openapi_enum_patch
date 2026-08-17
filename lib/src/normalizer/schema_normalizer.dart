@@ -120,9 +120,10 @@ class SchemaNormalizer {
       if (parameters is! List) continue;
       operation['parameters'] = parameters
           .where(
-            (parameter) => !(parameter is Map &&
-                parameter['in'] == 'path' &&
-                parameter['name'] == 'version'),
+            (parameter) =>
+                !(parameter is Map &&
+                    parameter['in'] == 'path' &&
+                    parameter['name'] == 'version'),
           )
           .toList();
     }
