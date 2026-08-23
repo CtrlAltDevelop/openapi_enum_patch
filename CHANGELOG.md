@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1
+
+- Shorten the pubspec description to the 60–180 characters pub.dev scores, so
+  the package no longer loses its "valid pubspec.yaml" points.
+
 ## 1.2.0
 
 - New **`prepare`** command: rewrites an export into a shape a generator can
