@@ -1,8 +1,9 @@
 name: openapi_enum_patch
 description: >-
-  Give real names to the integer enums swagger_parser generates from OpenAPI,
-  fill in the enum files it skips, and audit which enums still need naming.
-version: 1.1.0
+  Prepare an OpenAPI export for code generation, give real names to the integer
+  enums swagger_parser generates from it, fill in the enum files it skips, and
+  audit which enums still need naming.
+version: 1.2.0
 repository: https://github.com/CtrlAltDevelop/openapi_enum_patch
 issue_tracker: https://github.com/CtrlAltDevelop/openapi_enum_patch/issues
 

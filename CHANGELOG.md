@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.2.0
+
+- New **`prepare`** command: rewrites an export into a shape a generator can
+  make usable code out of, before `normalize` runs. Four opt-in passes, each
+  idempotent, driven by a new `schema_prep.yaml`:
+  - **`rename_schemas`** — exporters that inline their nested models name the
+    resulting component after a hash of its shape
+    (`e36568fca95941d68bfb36b27ea0de7e`), which generates a class nobody can
+    read or import on purpose. Only the project knows what each one means, so
+    the names come from config; every `$ref` is rewritten with them, and two
+    entries may share a target so an exporter's duplicate shapes collapse onto
+    one component.
+  - **`hoist_enums`** — the same enum written inline on several properties
+    generates one anonymous `Enum0`, `Enum1`, … per occurrence. Each occurrence
+    whose values match becomes a `$ref` to a single named component.
+  - **`json_only_requests`** — one request body declared under JSON,
+    form-encoded and multipart makes the generator pick multipart, turning a
+    plain POST into a per-field part list with no request model. The exact
+    duplicates of the JSON schema are dropped; a media type declaring its own
+    schema is left alone.
+  - **`strip_response_envelopes`** — where the transport already strips a
+    `{code, message, data, is_success}` wrapper, the response is pointed at its
+    payload `$ref` so the client deserialises what actually reaches it. A
+    schema qualifies only when every property it declares is a known envelope
+    field, so a real model is never mistaken for a wrapper.
+- Passes can be limited with `tags:`; the component passes then only touch the
+  components those operations reach, so a schema shared with an unimplemented
+  route is never rewritten on its behalf.
+- `prepare` reports the hash-named components still in scope that it was given
+  no name for, so the next run can name them instead of shipping the hash.
+- New `--prep` / `-p` option (defaults to `schema_prep.yaml`; a missing file is
+  not an error). New `SchemaPreparer`, `PreparationResult`, `SchemaPrep`,
+  `SchemaPreps` and `EnumPatcher.prepareSchemas`, all exported.
+- `audit --strict` now exits non-zero when the audit is not clean, as its help
+  text always said. Previously `--strict` was honoured by `patch` only, so the
+  read-only CI gate silently passed.
+- README rewritten around the pipeline: the seven stages in order and what each
+  one touches, the `scripts/generate_api.sh` runner to copy, what a run prints
+  (first run and second), where the three config files live and which command
+  reads which, and how to gate CI on `audit --strict` plus a clean tree.
+
 ## 1.1.0
 
 - Schemas may now be **YAML as well as JSON**. Every command reads both, and a
