@@ -91,10 +91,9 @@ Future<void> main(List<String> arguments) async {
       case 'normalize':
         _runNormalize(patcher);
       case 'audit':
-        _printAudit(
-          patcher.patchDryRunReport(overrides),
-          args.option('overrides')!,
-        );
+        final report = patcher.patchDryRunReport(overrides);
+        _printAudit(report, args.option('overrides')!);
+        if (args.flag('strict') && !report.isClean) exitCode = 1;
       case 'reorganize':
         final result = patcher.reorganizeModels();
         stdout.writeln('  ${result.describe()}');
@@ -219,7 +218,9 @@ ArgParser _buildArgParser() => ArgParser()
   ..addFlag(
     'strict',
     negatable: false,
-    help: 'Exit non-zero when the audit finds any enum needing attention.',
+    help:
+        'For patch and audit: exit non-zero when the audit finds any enum '
+        'needing attention.',
   )
   ..addFlag('help', abbr: 'h', negatable: false, help: 'Show this usage.')
   ..addFlag('version', negatable: false, help: 'Print the version.');
@@ -239,7 +240,8 @@ Commands:
               Run BEFORE swagger_parser.
   patch       Generate skipped enum files, apply overrides, print the audit.
               Run AFTER swagger_parser. (default)
-  audit       Print the audit only, changing nothing.
+  audit       Print the audit only, changing nothing. With --strict it is a
+              CI gate. Run any time.
   reorganize  Group flat models into per-namespace folders and strip the
               redundant prefix from their type names. Run AFTER patch and
               BEFORE build_runner.
