@@ -7,6 +7,7 @@
 /// skips, and prints an audit of every enum still missing names.
 ///
 /// ```sh
+/// dart run openapi_enum_patch prepare     # before normalize
 /// dart run openapi_enum_patch normalize   # before swagger_parser
 /// dart run openapi_enum_patch patch       # after swagger_parser
 /// ```
@@ -14,6 +15,7 @@ library;
 
 export 'src/audit/audit_formatter.dart';
 export 'src/audit/enum_audit.dart';
+export 'src/config/schema_prep_config.dart';
 export 'src/config/swagger_parser_config.dart';
 export 'src/emitter/dart_mappable_enum_emitter.dart';
 export 'src/emitter/enum_emitter.dart';
@@ -23,6 +25,7 @@ export 'src/models/enum_override.dart';
 export 'src/naming/dart_naming.dart';
 export 'src/normalizer/schema_normalizer.dart';
 export 'src/output_scanner.dart';
+export 'src/prepare/schema_preparer.dart';
 export 'src/registry_builder.dart';
 export 'src/reorganizer/model_reorganizer.dart';
 export 'src/schema/schema_codec.dart';

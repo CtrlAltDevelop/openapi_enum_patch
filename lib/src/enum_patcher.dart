@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'audit/enum_audit.dart';
+import 'config/schema_prep_config.dart';
 import 'config/swagger_parser_config.dart';
 import 'emitter/dart_mappable_enum_emitter.dart';
 import 'emitter/enum_emitter.dart';
@@ -10,6 +11,7 @@ import 'models/enum_entry.dart';
 import 'models/enum_override.dart';
 import 'normalizer/schema_normalizer.dart';
 import 'output_scanner.dart';
+import 'prepare/schema_preparer.dart';
 import 'registry_builder.dart';
 import 'reorganizer/model_reorganizer.dart';
 import 'schema/schema_codec.dart';
@@ -72,6 +74,46 @@ class EnumPatcher {
   Directory get modelsDir =>
       Directory(p.join(outputDir.path, config.modelsSubdirectory));
 
+  /// Rewrites each configured schema in place, applying the preparation passes
+  /// [preps] declares for it. Run this *first*, before [normalizeSchemas].
+  ///
+  /// A scheme with no entry, or an entry that turns nothing on, is skipped —
+  /// most exports need no preparation at all.
+  Map<String, PreparationResult> prepareSchemas(
+    SchemaPreps preps, {
+    SchemaPreparer preparer = const SchemaPreparer(),
+  }) {
+    final results = <String, PreparationResult>{};
+    for (final scheme in config.schemes) {
+      final prep = preps.prepFor(scheme.name);
+      if (prep.isEmpty) continue;
+
+      final file = File(p.join(root, scheme.schemaPath));
+      if (!file.existsSync()) continue;
+
+      final content = file.readAsStringSync();
+      final format = SchemaFormat.resolve(
+        path: scheme.schemaPath,
+        content: content,
+      );
+      final document = _registryBuilder.decode(
+        content,
+        source: scheme.schemaPath,
+        format: format,
+      );
+      final result = preparer.prepare(
+        document,
+        prep,
+        namespacePrefix: _prefixFor(scheme),
+      );
+      if (result.changed) {
+        file.writeAsStringSync(const SchemaCodec().encode(document, format));
+      }
+      results[scheme.name] = result;
+    }
+    return results;
+  }
+
   /// Rewrites each configured schema in place, applying the `{version}` and
   /// namespace-prefix fixes. Run this *before* `swagger_parser`.
   List<NormalizationResult> normalizeSchemas({
@@ -92,12 +134,10 @@ class EnumPatcher {
         source: scheme.schemaPath,
         format: format,
       );
-      final prefix = SchemaNormalizer.toNamespacePrefix(
-        scheme.name.isNotEmpty
-            ? scheme.name
-            : p.basenameWithoutExtension(file.path),
+      final result = normalizer.normalize(
+        document,
+        namespacePrefix: _prefixFor(scheme),
       );
-      final result = normalizer.normalize(document, namespacePrefix: prefix);
       if (result.changed) {
         // Rewritten in the format it was read in, so a YAML schema stays YAML.
         file.writeAsStringSync(const SchemaCodec().encode(document, format));
@@ -106,6 +146,13 @@ class EnumPatcher {
     }
     return results;
   }
+
+  /// The namespace prefix `normalize` gives [scheme]'s components.
+  String _prefixFor(SchemeConfig scheme) => SchemaNormalizer.toNamespacePrefix(
+    scheme.name.isNotEmpty
+        ? scheme.name
+        : p.basenameWithoutExtension(scheme.schemaPath),
+  );
 
   /// Reads every configured schema and indexes the enums in them.
   EnumRegistry buildRegistry() {
