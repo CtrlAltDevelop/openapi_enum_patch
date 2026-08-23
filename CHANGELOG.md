@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.0
+
+- Schemas may now be **YAML as well as JSON**. Every command reads both, and a
+  project can mix the two — the format comes from the file extension
+  (`.yaml`/`.yml`/`.json`), falling back to sniffing the content for anything
+  else.
+- `normalize` writes each schema back in the format it read it in, so a YAML
+  schema stays YAML. Multi-line strings are re-emitted as `|-` blocks and
+  sequences keep the indentation OpenAPI exporters use, so the rewrite stays a
+  small diff. Comments are not preserved.
+- New `SchemaCodec`, `SchemaFormat` and `YamlEncoder`, all exported.
+  `RegistryBuilder.decode` takes an optional `format`, and there is a
+  `buildFromYaml` beside `buildFromJson`.
+- `SchemaFormatException` moved from `registry_builder.dart` to
+  `schema/schema_codec.dart`. No change if you import the package's single
+  public library.
+- Fixed `--version` reporting `0.2.0`.
+
 ## 1.0.0
 
 First stable release. The API has settled across the `normalize`, `patch`,

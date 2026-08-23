@@ -4,7 +4,7 @@ import 'package:args/args.dart';
 import 'package:openapi_enum_patch/openapi_enum_patch.dart';
 import 'package:path/path.dart' as p;
 
-const _version = '0.2.0';
+const _version = '1.1.0';
 
 Future<void> main(List<String> arguments) async {
   final parser = _buildArgParser();
@@ -178,5 +178,8 @@ Commands:
   reorganize  Group flat models into per-namespace folders and strip the
               redundant prefix from their type names. Run AFTER patch and
               BEFORE build_runner.
+
+Schemas may be JSON or YAML; the format is taken from the file extension
+(.json, .yaml, .yml) and sniffed from the content for anything else.
 
 ${parser.usage}''';

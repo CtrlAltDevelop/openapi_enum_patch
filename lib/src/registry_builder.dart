@@ -1,19 +1,6 @@
-import 'dart:convert';
-
 import 'models/enum_entry.dart';
 import 'naming/dart_naming.dart';
-
-/// Thrown when an OpenAPI document cannot be read.
-class SchemaFormatException implements Exception {
-  const SchemaFormatException(this.message, {this.source});
-
-  final String message;
-  final String? source;
-
-  @override
-  String toString() =>
-      'SchemaFormatException: $message${source == null ? '' : ' (in $source)'}';
-}
+import 'schema/schema_codec.dart';
 
 /// Scans OpenAPI documents for enum schemas and predicts the Dart names
 /// `swagger_parser` will generate for each.
@@ -34,24 +21,22 @@ class RegistryBuilder {
 
   /// Builds a registry from a single JSON document.
   EnumRegistry buildFromJson(String json, {String? source}) =>
-      build([decode(json, source: source)]);
+      build([decode(json, source: source, format: SchemaFormat.json)]);
 
-  /// Decodes an OpenAPI document, raising a descriptive error on bad input.
-  Map<String, Object?> decode(String json, {String? source}) {
-    final Object? decoded;
-    try {
-      decoded = jsonDecode(json);
-    } on FormatException catch (e) {
-      throw SchemaFormatException('Invalid JSON: ${e.message}', source: source);
-    }
-    if (decoded is! Map<String, Object?>) {
-      throw SchemaFormatException(
-        'Expected a JSON object at the root.',
-        source: source,
-      );
-    }
-    return decoded;
-  }
+  /// Builds a registry from a single YAML document.
+  EnumRegistry buildFromYaml(String yaml, {String? source}) =>
+      build([decode(yaml, source: source, format: SchemaFormat.yaml)]);
+
+  /// Decodes a JSON or YAML OpenAPI document, raising a descriptive error on
+  /// bad input.
+  ///
+  /// When [format] is omitted it is taken from [source]'s extension, falling
+  /// back to sniffing [content].
+  Map<String, Object?> decode(
+    String content, {
+    String? source,
+    SchemaFormat? format,
+  }) => const SchemaCodec().decode(content, source: source, format: format);
 
   /// The namespace prefix of every component schema, as
   /// `file_prefix -> ClassPrefix` (`crm -> Crm`, `ai_analyst -> AiAnalyst`).

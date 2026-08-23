@@ -42,7 +42,7 @@ Or add it to `pubspec.yaml` yourself. It is a build-time tool, so it belongs in
 
 ```yaml
 dev_dependencies:
-  openapi_enum_patch: ^1.0.0
+  openapi_enum_patch: ^1.1.0
   swagger_parser: ^1.44.1   # the generator this wraps
 ```
 
@@ -80,6 +80,33 @@ dart run build_runner build --delete-conflicting-outputs
 
 The schema list, output directory and `use_flutter_compute` are read straight
 out of your `swagger_parser.yaml`, so nothing is configured twice.
+
+## Schema formats
+
+Schemas may be **JSON or YAML** — every command reads both, and a project can
+mix the two:
+
+```yaml
+swagger_parser:
+  output_directory: lib/api_clients
+  schemes:
+    - name: crm
+      schema_path: api/crm.json
+    - name: website
+      schema_path: api/website.yaml    # .yaml and .yml work the same
+```
+
+The format comes from the file extension (`.yaml`/`.yml` → YAML, `.json` →
+JSON). For any other extension the content is sniffed: a document opening with
+`{` or `[` is read as JSON, anything else as YAML.
+
+`normalize` writes each schema back in the format it read it in, so a YAML
+schema stays YAML. It regenerates the file from the parsed document, which
+means **comments and blank lines in a YAML schema are not preserved** — fine
+for a downloaded schema, worth knowing if you hand-edit one. Multi-line
+`description` fields stay readable as `|-` blocks, and anything that would read
+back as a number, a boolean or `null` is quoted.
+
 
 ## Naming enums
 
@@ -205,11 +232,31 @@ pass it to `EnumPatcher`; the registry, override and audit machinery is
 unchanged. `RegistryBuilder`, `EnumAuditor` and `SchemaNormalizer` are all pure
 and usable on their own.
 
+`SchemaCodec` reads and writes either format directly, and `RegistryBuilder`
+has a `buildFromYaml` to match `buildFromJson`:
+
+```dart
+const codec = SchemaCodec();
+
+final document = codec.decode(source, source: 'api/website.yaml');
+final registry = const RegistryBuilder().build([document]);
+
+const SchemaNormalizer().normalize(document, namespacePrefix: 'Website');
+File('api/website.yaml').writeAsStringSync(
+  codec.encode(document, SchemaFormat.yaml),
+);
+```
+
 ## Scope
 
 This package covers what is **general to any OpenAPI + `swagger_parser`
 project**: enum naming, the audit, missing-file synthesis, schema
 normalisation and the namespace reorganisation.
+
+Enums are indexed from **`components.schemas` entries that declare an `enum`**
+— the named enums `swagger_parser` turns into their own Dart files. Enums
+written inline inside a property or a query parameter are not named schemas, so
+they have no override key and do not appear in the audit.
 
 It deliberately does **not** ship the regex fix-ups a given project may need for
 a specific combination of `swagger_parser`, `retrofit` and `dart_mappable`

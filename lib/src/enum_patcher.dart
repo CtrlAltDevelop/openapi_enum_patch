@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -13,6 +12,7 @@ import 'normalizer/schema_normalizer.dart';
 import 'output_scanner.dart';
 import 'registry_builder.dart';
 import 'reorganizer/model_reorganizer.dart';
+import 'schema/schema_codec.dart';
 
 /// What a patch run did.
 class PatchResult {
@@ -82,9 +82,15 @@ class EnumPatcher {
       final file = File(p.join(root, scheme.schemaPath));
       if (!file.existsSync()) continue;
 
+      final content = file.readAsStringSync();
+      final format = SchemaFormat.resolve(
+        path: scheme.schemaPath,
+        content: content,
+      );
       final document = _registryBuilder.decode(
-        file.readAsStringSync(),
+        content,
         source: scheme.schemaPath,
+        format: format,
       );
       final prefix = SchemaNormalizer.toNamespacePrefix(
         scheme.name.isNotEmpty
@@ -93,9 +99,8 @@ class EnumPatcher {
       );
       final result = normalizer.normalize(document, namespacePrefix: prefix);
       if (result.changed) {
-        file.writeAsStringSync(
-          '${const JsonEncoder.withIndent('  ').convert(document)}\n',
-        );
+        // Rewritten in the format it was read in, so a YAML schema stays YAML.
+        file.writeAsStringSync(const SchemaCodec().encode(document, format));
         results.add(result);
       }
     }

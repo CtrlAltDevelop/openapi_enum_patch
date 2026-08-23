@@ -25,3 +25,5 @@ export 'src/normalizer/schema_normalizer.dart';
 export 'src/output_scanner.dart';
 export 'src/registry_builder.dart';
 export 'src/reorganizer/model_reorganizer.dart';
+export 'src/schema/schema_codec.dart';
+export 'src/schema/yaml_encoder.dart';
