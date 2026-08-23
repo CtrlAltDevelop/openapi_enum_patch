@@ -1,7 +1,8 @@
 # openapi_enum_patch
 
-Give real names to the integer enums [`swagger_parser`][sp] generates, fill in
-the enum files it skips, and audit which enums still need naming.
+Prepare an OpenAPI export for code generation, give real names to the integer
+enums [`swagger_parser`][sp] generates from it, fill in the enum files it skips,
+and audit which enums still need naming.
 
 [sp]: https://pub.dev/packages/swagger_parser
 
@@ -42,7 +43,7 @@ Or add it to `pubspec.yaml` yourself. It is a build-time tool, so it belongs in
 
 ```yaml
 dev_dependencies:
-  openapi_enum_patch: ^1.1.0
+  openapi_enum_patch: ^1.2.0
   swagger_parser: ^1.44.1   # the generator this wraps
 ```
 
@@ -54,32 +55,166 @@ dart pub get      # or: flutter pub get
 
 ## Use
 
-Two commands wrap your existing generation step:
+### The pipeline
+
+Generation is a fixed sequence: two of these commands run before
+`swagger_parser`, one after it, and one before `build_runner`.
 
 ```bash
-dart run openapi_enum_patch normalize          # before swagger_parser
-dart run swagger_parser
-dart run openapi_enum_patch patch              # after swagger_parser
-dart run openapi_enum_patch reorganize         # before build_runner
-dart run build_runner build --delete-conflicting-outputs
+dart run openapi_enum_patch prepare                      # 1. shape the exports
+dart run openapi_enum_patch normalize                    # 2. paths and names
+dart run swagger_parser                                  # 3. generate
+dart run openapi_enum_patch patch                        # 4. enums + audit
+dart run openapi_enum_patch reorganize                   # 5. group models
+dart run build_runner build --delete-conflicting-outputs  # 6. serializers
+dart format lib/generated                                # 7. optional
 ```
 
-| Command | When | What it does |
+| # | Stage | What it does |
 | --- | --- | --- |
-| `normalize` | Before | Fixes `{version}` path templates and bare schema names |
-| `patch` | After | Writes skipped enum files, applies overrides, prints the audit |
-| `reorganize` | After `patch` | Groups flat models into per-namespace folders |
-| `audit` | Any time | Prints the audit only, changing nothing |
+| 1 | `prepare` | Applies the `schema_prep.yaml` passes to each export: names hash-named components, hoists repeated inline enums, keeps one request media type, points responses at their payload. Schemes with no entry pass straight through |
+| 2 | `normalize` | Substitutes `{version}` in path templates and qualifies bare schema names, so `include_paths` matches and services cannot collide |
+| 3 | `swagger_parser` | Generates the Retrofit clients and models |
+| 4 | `patch` | Writes the enum files the generator skipped, applies `enum_overrides.yaml`, prints the audit |
+| 5 | `reorganize` | Groups the flat models into per-namespace folders and strips the now-redundant prefix from their type names |
+| 6 | `build_runner` | `dart_mappable` / Retrofit codegen |
+| 7 | `dart format` | Neither generator formats what it writes, so without this every run rewrites the tree with different line breaks and buries the real change in whitespace |
 
-| Option | Default |
-| --- | --- |
-| `-r, --root` | `.` |
-| `-c, --config` | `swagger_parser.yaml` |
-| `-o, --overrides` | `enum_overrides.yaml` |
-| `--strict` | off — exit non-zero when the audit is not clean |
+`audit` is the odd one out: it prints stage 4's report without writing anything,
+so it is safe to run any time — in CI with `--strict`, for instance.
+
+Stages 1, 2, 4 and 5 are all **idempotent**. Re-downloading a schema and
+re-running the whole pipeline is the normal way to work.
+
+### As one script
+
+Drop this in `scripts/generate_api.sh` and the whole pipeline becomes
+`bash scripts/generate_api.sh` from anywhere in the repo. This is the runner
+from the project this package was extracted from:
+
+```bash
+#!/usr/bin/env bash
+# Regenerate all API clients from the OpenAPI schemas in openapi/.
+#
+# Usage (from anywhere):  bash scripts/generate_api.sh
+#
+# Every stage lives in the openapi_enum_patch dev_dependency; openapi/ holds
+# only this project's data (schemas + three config files). This script is just
+# the running order.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+CONFIG="openapi/swagger_parser.yaml"
+OVERRIDES="openapi/enum_overrides.yaml"
+PREP="openapi/schema_prep.yaml"
+
+step() { printf '\n==> %s\n' "$1"; }
+
+step "Preparing exports (names, inline enums, media types, envelopes)..."
+dart run openapi_enum_patch prepare -c "$CONFIG" -o "$OVERRIDES" -p "$PREP"
+
+step "Normalizing {version} templates and schema names..."
+dart run openapi_enum_patch normalize -c "$CONFIG" -o "$OVERRIDES"
+
+step "Generating clients and models..."
+dart run swagger_parser -f "$CONFIG"
+
+step "Filling in skipped enums and applying overrides..."
+dart run openapi_enum_patch patch -c "$CONFIG" -o "$OVERRIDES"
+
+step "Reorganizing models into per-namespace folders..."
+dart run openapi_enum_patch reorganize -c "$CONFIG" -o "$OVERRIDES"
+
+step "Running build_runner (dart_mappable / Retrofit codegen)..."
+dart run build_runner build --delete-conflicting-outputs
+
+# Neither swagger_parser nor build_runner formats what it writes, so without
+# this every run rewrites the whole tree with different line breaks and buries
+# the real change in whitespace.
+step "Formatting the generated output..."
+dart format lib/generated
+
+step "Done."
+```
+
+A run then reads like this — each stage says what it touched, and nothing else:
+
+```
+==> Preparing exports (names, inline enums, media types, envelopes)...
+  website_service: renamed 10 schemas, hoisted 3 inline enums, dropped 32 non-JSON request bodies, stripped 16 envelopes
+
+==> Normalizing {version} templates and schema names...
+  Normalized schema names → WebsiteService.* (108)
+
+==> Filling in skipped enums and applying overrides...
+  Generated (missing): crm_enums_account_status.dart
+  Overridden (names, +1 values): social_service_copy_trade_type.dart
+
+  ── Enum override audit ──────────────────────────────────────────
+  All generated integer enums are fully overridden.
+  ─────────────────────────────────────────────────────────────────
+
+==> Reorganizing models into per-namespace folders...
+  moved 367 models into 5 namespace folders; renamed 344 classes, kept 23 prefixed to avoid collisions
+```
+
+On a second run with nothing changed, stages 1 and 2 report `already prepared`
+and `Schemas already normalized.` and write nothing.
+
+### Where things live
+
+Only your own data sits in the repo; every stage above comes from the
+dev_dependency:
+
+```
+openapi/
+├── swagger_parser.yaml    # the generator's config — routes, output dir, options
+├── enum_overrides.yaml    # enum member names            (used by patch/audit)
+├── schema_prep.yaml       # per-export preparation passes (used by prepare)
+└── schemas/
+    ├── crm_service.json
+    └── website_service.yaml
+```
+
+Point the commands at them with `-c`, `-o` and `-p`, or keep the defaults by
+running from the directory that holds them. All three paths are resolved
+relative to `--root`:
+
+| Option | Default | Used by |
+| --- | --- | --- |
+| `-r, --root` | `.` | all — the project root the paths below are relative to |
+| `-c, --config` | `swagger_parser.yaml` | all |
+| `-o, --overrides` | `enum_overrides.yaml` | `patch`, `audit` |
+| `-p, --prep` | `schema_prep.yaml` | `prepare` |
+| `--strict` | off | `patch`, `audit` — exit non-zero when the audit is not clean |
+
+A missing `enum_overrides.yaml` or `schema_prep.yaml` is not an error: the
+commands that read them simply have nothing to do.
 
 The schema list, output directory and `use_flutter_compute` are read straight
-out of your `swagger_parser.yaml`, so nothing is configured twice.
+out of your `swagger_parser.yaml`, so nothing is configured twice — adding a
+service to the generator adds it here too.
+
+### In CI
+
+`audit` re-runs stage 4's report over the current output without writing
+anything, and `--strict` turns it into a gate — it exits non-zero while any
+integer enum is unnamed:
+
+```bash
+dart run openapi_enum_patch audit --strict
+```
+
+Pair it with a check that generation is reproducible — run the script and fail
+on a dirty tree:
+
+```bash
+bash scripts/generate_api.sh
+git diff --exit-code -- lib/generated openapi
+```
 
 ## Schema formats
 
@@ -149,6 +284,64 @@ Every `patch` run ends with a coverage report:
 Only enums actually generated for your project are considered, so unused schema
 enums stay quiet. The audit is report-only unless you pass `--strict`, which
 makes it a CI gate.
+
+## What `prepare` fixes
+
+Some exporters — drf-spectacular among them — emit documents that are valid
+OpenAPI and still generate code nobody can use. `prepare` answers four of those
+habits, and only the ones you turn on, from a `schema_prep.yaml` beside your
+`swagger_parser.yaml`:
+
+```yaml
+schemas:
+  website_service:            # a scheme name from swagger_parser.yaml
+    tags: [Calculators]       # limit every pass to these operations
+    rename_schemas:
+      e36568fca95941d68bfb36b27ea0de7e: PipValueAdditionalInfo
+      Row: PivotPointRow
+    hoist_enums:
+      TradeDirection: [buy, sell]
+    json_only_requests: true
+    strip_response_envelopes: true
+```
+
+**Hash-named components.** An exporter that inlines its nested models names the
+resulting component after a hash of its shape, so the generator writes a class
+called `E36568fca95941d68bfb36b27ea0de7e`. Only you know what each one means, so
+`rename_schemas` supplies the name and every `$ref` is rewritten with it. Two
+entries may share a target, which collapses an exporter's duplicate shapes onto
+one component. A name resolves whether or not `normalize` has already qualified
+it, and a name that would shadow a type from your own framework (`Row`) is
+qualified here too.
+
+**Repeated inline enums.** The same enum written inline on three properties is
+three anonymous enums to a generator: `Enum0`, `Enum1`, `Enum2`. Every inline
+enum in scope whose values match a `hoist_enums` entry becomes a `$ref` to one
+named component, defined from the first occurrence so it keeps the exporter's
+own descriptions and extensions.
+
+**One body under three media types.** A body declared as JSON, form-encoded and
+multipart makes the generator pick the multipart one, turning a plain POST into
+a per-field part list with no request model. `json_only_requests` drops the
+media types that duplicate the JSON schema exactly; one declaring its own
+schema describes a different body and is left alone.
+
+**Response envelopes.** Where every payload is wrapped in
+`{code, message, data, is_success}` and the wrapper is already stripped in
+transport — an interceptor, a gateway — the generated client should deserialise
+what actually reaches it. `strip_response_envelopes` points each response at
+its payload `$ref`. A schema qualifies only when *every* property it declares
+is a known envelope field (override the set with `envelope_keys`, and the
+payload field with `envelope_data_key`), so a model that merely carries a `data`
+field is never mistaken for a wrapper.
+
+`tags:` keeps all of this to the routes you have actually implemented: the
+component passes only touch the components those operations reach, so a schema
+shared with an unimplemented route is never rewritten on its behalf. Anything
+in scope that is still hash-named and has no configured name is reported, so
+the next run can name it rather than shipping the hash.
+
+Every pass is **idempotent**; a scheme with no entry is skipped entirely.
 
 ## What `normalize` fixes
 
@@ -232,6 +425,19 @@ pass it to `EnumPatcher`; the registry, override and audit machinery is
 unchanged. `RegistryBuilder`, `EnumAuditor` and `SchemaNormalizer` are all pure
 and usable on their own.
 
+`SchemaPreparer` is pure too, so a document can be prepared without touching
+the filesystem:
+
+```dart
+final preps = SchemaPreps.parse(prepYaml);
+final result = const SchemaPreparer().prepare(
+  document,
+  preps.prepFor('website_service'),
+  namespacePrefix: 'WebsiteService',
+);
+print(result.describe());
+```
+
 `SchemaCodec` reads and writes either format directly, and `RegistryBuilder`
 has a `buildFromYaml` to match `buildFromJson`:
 
@@ -250,8 +456,8 @@ File('api/website.yaml').writeAsStringSync(
 ## Scope
 
 This package covers what is **general to any OpenAPI + `swagger_parser`
-project**: enum naming, the audit, missing-file synthesis, schema
-normalisation and the namespace reorganisation.
+project**: export preparation, enum naming, the audit, missing-file synthesis,
+schema normalisation and the namespace reorganisation.
 
 Enums are indexed from **`components.schemas` entries that declare an `enum`**
 — the named enums `swagger_parser` turns into their own Dart files. Enums
