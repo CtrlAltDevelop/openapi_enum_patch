@@ -31,7 +31,13 @@ Future<void> main(List<String> arguments) async {
   }
 
   final command = args.rest.isEmpty ? 'patch' : args.rest.first;
-  if (!const {'normalize', 'patch', 'audit', 'reorganize'}.contains(command)) {
+  if (!const {
+    'prepare',
+    'normalize',
+    'patch',
+    'audit',
+    'reorganize',
+  }.contains(command)) {
     stderr
       ..writeln('Unknown command "$command".')
       ..writeln()
@@ -43,6 +49,7 @@ Future<void> main(List<String> arguments) async {
   final root = args.option('root')!;
   final configPath = p.join(root, args.option('config')!);
   final overridesPath = p.join(root, args.option('overrides')!);
+  final prepPath = p.join(root, args.option('prep')!);
 
   final SwaggerParserConfig config;
   try {
@@ -68,8 +75,19 @@ Future<void> main(List<String> arguments) async {
 
   final patcher = EnumPatcher(root: root, config: config);
 
+  final SchemaPreps preps;
+  try {
+    preps = _loadPreps(prepPath);
+  } on SchemaPrepFormatException catch (e) {
+    stderr.writeln('Error: could not read $prepPath — ${e.message}');
+    exitCode = 1;
+    return;
+  }
+
   try {
     switch (command) {
+      case 'prepare':
+        _runPrepare(patcher, preps, args.option('prep')!);
       case 'normalize':
         _runNormalize(patcher);
       case 'audit':
@@ -92,6 +110,41 @@ Future<void> main(List<String> arguments) async {
   } on FileSystemException catch (e) {
     stderr.writeln('Error: ${e.message} (${e.path})');
     exitCode = 1;
+  }
+}
+
+SchemaPreps _loadPreps(String path) {
+  final file = File(path);
+  if (!file.existsSync()) return const SchemaPreps.empty();
+  return SchemaPreps.parse(file.readAsStringSync());
+}
+
+void _runPrepare(EnumPatcher patcher, SchemaPreps preps, String prepPath) {
+  if (preps.isEmpty) {
+    stdout.writeln('  No passes configured in $prepPath; nothing to prepare.');
+    return;
+  }
+
+  final results = patcher.prepareSchemas(preps);
+  if (results.isEmpty) {
+    stdout.writeln('  No configured scheme matched a schema; nothing to do.');
+    return;
+  }
+  for (final entry in results.entries) {
+    final result = entry.value;
+    stdout.writeln(
+      '  ${entry.key}: '
+      '${result.changed ? result.describe() : 'already prepared'}',
+    );
+    if (result.unnamedSchemas.isNotEmpty) {
+      stderr.writeln(
+        '  WARNING: ${result.unnamedSchemas.length} component(s) in scope are '
+        'still named after their shape and will generate unreadable classes; '
+        'add them to rename_schemas: '
+        '${result.unnamedSchemas.take(3).join(', ')}'
+        '${result.unnamedSchemas.length > 3 ? ', …' : ''}',
+      );
+    }
   }
 }
 
@@ -156,6 +209,13 @@ ArgParser _buildArgParser() => ArgParser()
     help: 'Path to enum_overrides.yaml, relative to --root.',
     valueHelp: 'path',
   )
+  ..addOption(
+    'prep',
+    abbr: 'p',
+    defaultsTo: 'schema_prep.yaml',
+    help: 'Path to schema_prep.yaml, relative to --root.',
+    valueHelp: 'path',
+  )
   ..addFlag(
     'strict',
     negatable: false,
@@ -165,11 +225,16 @@ ArgParser _buildArgParser() => ArgParser()
   ..addFlag('version', negatable: false, help: 'Print the version.');
 
 String _usage(ArgParser parser) => '''
-Name, complete and audit swagger_parser's integer enums.
+Prepare an OpenAPI export for generation, then name, complete and audit the
+integer enums swagger_parser makes of it.
 
 Usage: dart run openapi_enum_patch <command> [options]
 
 Commands:
+  prepare     Apply the schema_prep.yaml passes to each schema: name
+              hash-named components, hoist repeated inline enums, keep one
+              request media type, and replace response envelopes with their
+              payload. Run FIRST, before normalize.
   normalize   Rewrite {version} path templates and qualify bare schema names.
               Run BEFORE swagger_parser.
   patch       Generate skipped enum files, apply overrides, print the audit.
