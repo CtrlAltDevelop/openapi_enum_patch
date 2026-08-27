@@ -88,27 +88,15 @@ class EnumPatcher {
       final prep = preps.prepFor(scheme.name);
       if (prep.isEmpty) continue;
 
-      final file = File(p.join(root, scheme.schemaPath));
-      if (!file.existsSync()) continue;
+      final schema = _read(scheme);
+      if (schema == null) continue;
 
-      final content = file.readAsStringSync();
-      final format = SchemaFormat.resolve(
-        path: scheme.schemaPath,
-        content: content,
-      );
-      final document = _registryBuilder.decode(
-        content,
-        source: scheme.schemaPath,
-        format: format,
-      );
       final result = preparer.prepare(
-        document,
+        schema.document,
         prep,
         namespacePrefix: _prefixFor(scheme),
       );
-      if (result.changed) {
-        file.writeAsStringSync(const SchemaCodec().encode(document, format));
-      }
+      if (result.changed) schema.write();
       results[scheme.name] = result;
     }
     return results;
@@ -121,26 +109,16 @@ class EnumPatcher {
   }) {
     final results = <NormalizationResult>[];
     for (final scheme in config.schemes) {
-      final file = File(p.join(root, scheme.schemaPath));
-      if (!file.existsSync()) continue;
+      final schema = _read(scheme);
+      if (schema == null) continue;
 
-      final content = file.readAsStringSync();
-      final format = SchemaFormat.resolve(
-        path: scheme.schemaPath,
-        content: content,
-      );
-      final document = _registryBuilder.decode(
-        content,
-        source: scheme.schemaPath,
-        format: format,
-      );
       final result = normalizer.normalize(
-        document,
+        schema.document,
         namespacePrefix: _prefixFor(scheme),
       );
       if (result.changed) {
         // Rewritten in the format it was read in, so a YAML schema stays YAML.
-        file.writeAsStringSync(const SchemaCodec().encode(document, format));
+        schema.write();
         results.add(result);
       }
     }
@@ -155,20 +133,7 @@ class EnumPatcher {
   );
 
   /// Reads every configured schema and indexes the enums in them.
-  EnumRegistry buildRegistry() {
-    final documents = <Map<String, Object?>>[];
-    for (final scheme in config.schemes) {
-      final file = File(p.join(root, scheme.schemaPath));
-      if (!file.existsSync()) continue;
-      documents.add(
-        _registryBuilder.decode(
-          file.readAsStringSync(),
-          source: scheme.schemaPath,
-        ),
-      );
-    }
-    return _registryBuilder.build(documents);
-  }
+  EnumRegistry buildRegistry() => _registryBuilder.build(_documents());
 
   /// Groups the flat generated models into per-namespace folders and strips
   /// the redundant prefix from their type names.
@@ -190,19 +155,34 @@ class EnumPatcher {
   }
 
   /// Reads every configured schema and derives the namespace prefixes.
-  Map<String, String> _namespacePrefixes() {
-    final documents = <Map<String, Object?>>[];
-    for (final scheme in config.schemes) {
-      final file = File(p.join(root, scheme.schemaPath));
-      if (!file.existsSync()) continue;
-      documents.add(
-        _registryBuilder.decode(
-          file.readAsStringSync(),
-          source: scheme.schemaPath,
-        ),
-      );
-    }
-    return _registryBuilder.namespacePrefixes(documents);
+  Map<String, String> _namespacePrefixes() =>
+      _registryBuilder.namespacePrefixes(_documents());
+
+  /// Every configured schema that exists on disk, decoded.
+  List<Map<String, Object?>> _documents() => [
+    for (final scheme in config.schemes) ?_read(scheme)?.document,
+  ];
+
+  /// Reads and decodes [scheme]'s document, or `null` when the file is not
+  /// there — a scheme may be configured before its export has been downloaded.
+  _SchemaFile? _read(SchemeConfig scheme) {
+    final file = File(p.join(root, scheme.schemaPath));
+    if (!file.existsSync()) return null;
+
+    final content = file.readAsStringSync();
+    final format = SchemaFormat.resolve(
+      path: scheme.schemaPath,
+      content: content,
+    );
+    return _SchemaFile(
+      file: file,
+      format: format,
+      document: _registryBuilder.decode(
+        content,
+        source: scheme.schemaPath,
+        format: format,
+      ),
+    );
   }
 
   /// Audits override coverage without writing anything.
@@ -271,4 +251,22 @@ class EnumPatcher {
       ..createSync(recursive: true);
     file.writeAsStringSync(_emitter.emit(entry, override));
   }
+}
+
+/// One configured schema, read from disk and decoded, ready to be rewritten in
+/// the format it arrived in.
+class _SchemaFile {
+  const _SchemaFile({
+    required this.file,
+    required this.format,
+    required this.document,
+  });
+
+  final File file;
+  final SchemaFormat format;
+  final Map<String, Object?> document;
+
+  /// Writes [document] back over [file], keeping its original format.
+  void write() =>
+      file.writeAsStringSync(const SchemaCodec().encode(document, format));
 }

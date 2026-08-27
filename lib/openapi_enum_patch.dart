@@ -30,3 +30,4 @@ export 'src/registry_builder.dart';
 export 'src/reorganizer/model_reorganizer.dart';
 export 'src/schema/schema_codec.dart';
 export 'src/schema/yaml_encoder.dart';
+export 'src/version.dart';

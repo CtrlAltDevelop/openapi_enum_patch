@@ -81,8 +81,9 @@ void main() {
   });
 
   test('emits compute helpers that use the mapper API', () {
-    final source = const DartMappableEnumEmitter(useFlutterCompute: true)
-        .emit(_entry, const EnumOverride());
+    final source = const DartMappableEnumEmitter(
+      useFlutterCompute: true,
+    ).emit(_entry, const EnumOverride());
 
     // The mapper API is required because `enums_to_json: false` removes the
     // `fromJson` constructor and `.json` getter the naive template calls.
@@ -90,5 +91,77 @@ void main() {
     expect(source, contains('object?.toValue() as int?'));
     expect(source, isNot(contains('.fromJson(')));
     expect(source, isNot(contains('?.json')));
+  });
+
+  test('uses the names the export declares when no override does', () {
+    final source = const DartMappableEnumEmitter().emit(
+      const EnumEntry(
+        schemaKey: 'CRM.Enums.Tier',
+        className: 'CrmEnumsTier',
+        fileStem: 'crm_enums_tier',
+        values: [0, 1],
+        isIntegerEnum: true,
+        schemaNames: {0: 'bronze', 1: 'gold'},
+      ),
+      const EnumOverride(),
+    );
+
+    expect(source, contains('@MappableValue(0)\n  bronze,'));
+    expect(source, contains('@MappableValue(1)\n  gold;'));
+  });
+
+  test('an override outranks the name the export declares', () {
+    final source = const DartMappableEnumEmitter().emit(
+      const EnumEntry(
+        schemaKey: 'CRM.Enums.Tier',
+        className: 'CrmEnumsTier',
+        fileStem: 'crm_enums_tier',
+        values: [0, 1],
+        isIntegerEnum: true,
+        schemaNames: {0: 'bronze', 1: 'gold'},
+      ),
+      const EnumOverride(names: {1: 'platinum'}),
+    );
+
+    expect(source, contains('bronze,'));
+    expect(source, contains('platinum;'));
+    expect(source, isNot(contains('gold')));
+  });
+
+  test('escapes a dollar sign so the literal is not an interpolation', () {
+    final source = const DartMappableEnumEmitter().emit(
+      const EnumEntry(
+        schemaKey: 'CRM.Enums.Currency',
+        className: 'CrmEnumsCurrency',
+        fileStem: 'crm_enums_currency',
+        values: [r'USD$', 'a\nb'],
+        isIntegerEnum: false,
+      ),
+      const EnumOverride(names: {r'USD$': 'usd', 'a\nb': 'ab'}),
+    );
+
+    expect(source, contains(r"@MappableValue('USD\$')"));
+    expect(source, contains(r"@MappableValue('a\nb')"));
+  });
+
+  test('disambiguates two values that ask for one member name', () {
+    final source = const DartMappableEnumEmitter().emit(
+      _entry,
+      const EnumOverride(names: {0: 'active', 1: 'active', 2: 'closed'}),
+    );
+
+    expect(source, contains('@MappableValue(0)\n  active\$1,'));
+    expect(source, contains('@MappableValue(1)\n  active\$2,'));
+    expect(source, contains('@MappableValue(2)\n  closed;'));
+  });
+
+  test('makes an override name with spaces a legal identifier', () {
+    final source = const DartMappableEnumEmitter().emit(
+      _entry,
+      const EnumOverride(names: {0: 'in progress', 1: '2fa', 2: 'done'}),
+    );
+
+    expect(source, contains('in_progress,'));
+    expect(source, contains('\$2fa,'));
   });
 }

@@ -30,9 +30,9 @@ void main() {
     File(p.join(modelsDir.path, '$stem.dart')).writeAsStringSync(contents);
   }
 
-  ReorganizeResult run() =>
-      const ModelReorganizer(groups: groups)
-          .run(modelsDir: modelsDir, apiDir: apiDir, rewriteRoots: [libDir]);
+  ReorganizeResult run() => const ModelReorganizer(
+    groups: groups,
+  ).run(modelsDir: modelsDir, apiDir: apiDir, rewriteRoots: [libDir]);
 
   String read(String relative) =>
       File(p.join(modelsDir.path, relative)).readAsStringSync();

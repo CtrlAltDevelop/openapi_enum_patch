@@ -1,5 +1,51 @@
 # Changelog
 
+## 1.3.0
+
+- **Enum member names are now read from the export itself.** OpenAPI has nowhere
+  to put them, but most exporters write them into a vendor extension anyway, and
+  `patch` now reads all three spellings: `x-enum-varnames`
+  (openapi-generator, drf-spectacular), `x-enumNames` / `x-enum-names` (NSwag
+  and the .NET exporters) and `x-ms-enum` (AutoRest, Azure). An export that
+  carries them needs no `enum_overrides.yaml` entry at all, and the audit stops
+  asking for one.
+  - The list forms are zipped against `enum`, so a truncated or partly blank
+    list names the values it reaches and the audit asks for the rest.
+    `x-ms-enum` pairs each name with its value, so its order does not matter.
+  - An override outranks the export **value by value**, so a project can rename
+    only the members it disagrees with.
+  - The audit reports how many enums took their names this way, and
+    `AuditReport.schemaNamed` exposes the count. New `EnumEntry.schemaNames` and
+    `EnumEntry.isSchemaNamed`.
+- New **`DUPLICATE NAMES`** audit issue (a new `AuditIssue` value, so an
+  exhaustive `switch` over it in your own code needs one more case): two values resolving to one Dart member
+  name previously emitted an enum that did not compile, with no warning. They
+  are now emitted as `name$1` / `name$2` and reported, with the shared
+  identifier named in the report. Checked for string enums too, where a schema
+  declaring both `Draft` and `draft` folds them onto one member without any
+  override involved.
+- **Fixed:** a string enum value containing `$` emitted `'USD$'`, which Dart
+  reads as the start of an interpolation and refuses to compile. `$` is now
+  escaped along with newlines, carriage returns and tabs.
+- **Fixed:** an override or schema-declared name that was not already a legal
+  Dart identifier emitted a file the analyser rejected. Characters Dart does not
+  allow now become `_` (`in progress` → `in_progress`) and a leading digit gets a
+  `$` in front of it (`2fa` → `$2fa`), alongside the existing reserved-word
+  suffix.
+- A command now loads only the config it actually reads, so a malformed
+  `enum_overrides.yaml` no longer fails a `normalize` or `reorganize` run that
+  never looks at it — and its parse error is reported with the same wording from
+  every command.
+- The version `--version` prints moved to `packageVersion` in the library, with
+  a test holding it to `pubspec.yaml`, so a release cannot ship the previous
+  number.
+- The audit's closing line now says "fully named" rather than "fully
+  overridden", since the names no longer have to come from an override.
+- Internals: the four copies of read-schema-decode-rewrite in `EnumPatcher`
+  collapsed onto one helper, and `ResolvedMembers` is now the single place that
+  decides what a member is called — the auditor asks it rather than
+  reimplementing the rules.
+
 ## 1.2.1
 
 - Shorten the pubspec description to the 60–180 characters pub.dev scores, so

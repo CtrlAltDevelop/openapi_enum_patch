@@ -21,18 +21,24 @@ class AuditFormatter {
         '$indent${issue.shortName} (${findings.length}): ${issue.explanation}',
       );
       for (final finding in findings) {
+        final detail = finding.detail == null ? '' : ' "${finding.detail}"';
         buffer.writeln(
           '$indent  - ${finding.entry.schemaKey}  '
           '(${finding.entry.className})  '
-          '${_label(issue)}: ${finding.values}',
+          '${_label(issue)}$detail: ${finding.values}',
         );
       }
     }
 
-    if (report.isClean) {
+    if (report.schemaNamed > 0) {
       buffer.writeln(
-        '${indent}All generated integer enums are fully overridden.',
+        '$indent${report.schemaNamed} enum(s) took their member names from the '
+        'export itself; no override needed.',
       );
+    }
+
+    if (report.isClean) {
+      buffer.writeln('${indent}All generated integer enums are fully named.');
     } else {
       final target = overridesPath ?? 'the overrides file';
       buffer.writeln(
@@ -48,5 +54,6 @@ class AuditFormatter {
     AuditIssue.missingOverride => 'values',
     AuditIssue.missingNames => 'unnamed',
     AuditIssue.staleNames => 'unknown',
+    AuditIssue.duplicateNames => 'shared by',
   };
 }

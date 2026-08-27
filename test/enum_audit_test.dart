@@ -105,10 +105,11 @@ void main() {
   });
 
   test('formats a clean report', () {
-    final text = const AuditFormatter(overridesPath: 'enum_overrides.yaml')
-        .format(const AuditReport([]));
+    final text = const AuditFormatter(
+      overridesPath: 'enum_overrides.yaml',
+    ).format(const AuditReport([]));
 
-    expect(text, contains('All generated integer enums are fully overridden.'));
+    expect(text, contains('All generated integer enums are fully named.'));
   });
 
   test('formats findings with their section headings', () {
@@ -117,13 +118,166 @@ void main() {
       overrides: const EnumOverrides.empty(),
     );
 
-    final text = const AuditFormatter(overridesPath: 'enum_overrides.yaml')
-        .format(report);
+    final text = const AuditFormatter(
+      overridesPath: 'enum_overrides.yaml',
+    ).format(report);
 
     expect(text, contains('MISSING OVERRIDE (1)'));
     expect(text, contains('CRM.Enums.AccountStatus'));
     expect(text, contains('CrmEnumsAccountStatus'));
     expect(text, contains('values: [0, 1, 2]'));
     expect(text, contains('enum_overrides.yaml'));
+  });
+
+  group('schema-declared names', () {
+    const namedByExport = EnumEntry(
+      schemaKey: 'CRM.Enums.Tier',
+      className: 'CrmEnumsTier',
+      fileStem: 'crm_enums_tier',
+      values: [0, 1],
+      isIntegerEnum: true,
+      schemaNames: {0: 'bronze', 1: 'gold'},
+    );
+
+    test('an enum the export names needs no override', () {
+      final report = _auditor.audit(
+        registry: _registry([namedByExport]),
+        overrides: const EnumOverrides.empty(),
+      );
+
+      expect(report.isClean, isTrue);
+      expect(report.schemaNamed, 1);
+    });
+
+    test('the export covering only some values still flags the rest', () {
+      final report = _auditor.audit(
+        registry: _registry([
+          const EnumEntry(
+            schemaKey: 'CRM.Enums.Tier',
+            className: 'CrmEnumsTier',
+            fileStem: 'crm_enums_tier',
+            values: [0, 1, 2],
+            isIntegerEnum: true,
+            schemaNames: {0: 'bronze'},
+          ),
+        ]),
+        overrides: const EnumOverrides.empty(),
+      );
+
+      expect(report.byIssue(AuditIssue.missingNames).single.values, [1, 2]);
+      expect(report.byIssue(AuditIssue.missingOverride), isEmpty);
+    });
+
+    test('an override fills the values the export left unnamed', () {
+      final report = _auditor.audit(
+        registry: _registry([
+          const EnumEntry(
+            schemaKey: 'CRM.Enums.Tier',
+            className: 'CrmEnumsTier',
+            fileStem: 'crm_enums_tier',
+            values: [0, 1],
+            isIntegerEnum: true,
+            schemaNames: {0: 'bronze'},
+          ),
+        ]),
+        overrides: const EnumOverrides({
+          'CRM.Enums.Tier': EnumOverride(names: {1: 'gold'}),
+        }),
+      );
+
+      expect(report.isClean, isTrue);
+    });
+
+    test('extra values the override adds are still audited', () {
+      final report = _auditor.audit(
+        registry: _registry([namedByExport]),
+        overrides: const EnumOverrides({
+          'CRM.Enums.Tier': EnumOverride(extra: [2]),
+        }),
+      );
+
+      expect(report.byIssue(AuditIssue.missingNames).single.values, [2]);
+    });
+  });
+
+  group('duplicate member names', () {
+    test('flags two values an override maps onto one name', () {
+      final report = _auditor.audit(
+        registry: _registry([_accountStatus]),
+        overrides: const EnumOverrides({
+          'CRM.Enums.AccountStatus': EnumOverride(
+            names: {0: 'active', 1: 'active', 2: 'closed'},
+          ),
+        }),
+      );
+
+      final finding = report.byIssue(AuditIssue.duplicateNames).single;
+      expect(finding.detail, 'active');
+      expect(finding.values, [0, 1]);
+    });
+
+    test('flags a string enum whose values lowercase onto one name', () {
+      final report = _auditor.audit(
+        registry: _registry([
+          const EnumEntry(
+            schemaKey: 'CRM.Enums.State',
+            className: 'CrmEnumsState',
+            fileStem: 'crm_enums_state',
+            values: ['Draft', 'draft'],
+            isIntegerEnum: false,
+          ),
+        ]),
+        overrides: const EnumOverrides.empty(),
+      );
+
+      expect(report.byIssue(AuditIssue.duplicateNames).single.values, [
+        'Draft',
+        'draft',
+      ]);
+    });
+
+    test('names that differ only by an illegal character collide', () {
+      final report = _auditor.audit(
+        registry: _registry([_accountStatus]),
+        overrides: const EnumOverrides({
+          'CRM.Enums.AccountStatus': EnumOverride(
+            names: {0: 'in progress', 1: 'in-progress', 2: 'done'},
+          ),
+        }),
+      );
+
+      expect(
+        report.byIssue(AuditIssue.duplicateNames).single.detail,
+        'in_progress',
+      );
+    });
+
+    test('stays quiet when every name is distinct', () {
+      final report = _auditor.audit(
+        registry: _registry([_accountStatus]),
+        overrides: const EnumOverrides({
+          'CRM.Enums.AccountStatus': EnumOverride(
+            names: {0: 'a', 1: 'b', 2: 'c'},
+          ),
+        }),
+      );
+
+      expect(report.isClean, isTrue);
+    });
+
+    test('the report names the identifier that is shared', () {
+      final report = _auditor.audit(
+        registry: _registry([_accountStatus]),
+        overrides: const EnumOverrides({
+          'CRM.Enums.AccountStatus': EnumOverride(
+            names: {0: 'active', 1: 'active', 2: 'closed'},
+          ),
+        }),
+      );
+
+      final text = const AuditFormatter().format(report);
+      expect(text, contains('DUPLICATE NAMES (1)'));
+      expect(text, contains('shared by "active": [0, 1]'));
+    });
   });
 }

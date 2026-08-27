@@ -4,8 +4,6 @@ import 'package:args/args.dart';
 import 'package:openapi_enum_patch/openapi_enum_patch.dart';
 import 'package:path/path.dart' as p;
 
-const _version = '1.2.1';
-
 Future<void> main(List<String> arguments) async {
   final parser = _buildArgParser();
 
@@ -26,7 +24,7 @@ Future<void> main(List<String> arguments) async {
     return;
   }
   if (args.flag('version')) {
-    stdout.writeln('openapi_enum_patch $_version');
+    stdout.writeln('openapi_enum_patch $packageVersion');
     return;
   }
 
@@ -48,8 +46,6 @@ Future<void> main(List<String> arguments) async {
 
   final root = args.option('root')!;
   final configPath = p.join(root, args.option('config')!);
-  final overridesPath = p.join(root, args.option('overrides')!);
-  final prepPath = p.join(root, args.option('prep')!);
 
   final SwaggerParserConfig config;
   try {
@@ -64,45 +60,47 @@ Future<void> main(List<String> arguments) async {
     return;
   }
 
-  final EnumOverrides overrides;
-  try {
-    overrides = _loadOverrides(overridesPath);
-  } on EnumOverrideFormatException catch (e) {
-    stderr.writeln('Error: could not read $overridesPath — ${e.message}');
-    exitCode = 1;
-    return;
-  }
-
   final patcher = EnumPatcher(root: root, config: config);
 
-  final SchemaPreps preps;
-  try {
-    preps = _loadPreps(prepPath);
-  } on SchemaPrepFormatException catch (e) {
-    stderr.writeln('Error: could not read $prepPath — ${e.message}');
-    exitCode = 1;
-    return;
-  }
-
+  // Each command loads only the config it reads, so a typo in the overrides
+  // cannot fail a `normalize` run that never looks at them.
   try {
     switch (command) {
       case 'prepare':
-        _runPrepare(patcher, preps, args.option('prep')!);
+        _runPrepare(
+          patcher,
+          _loadPreps(p.join(root, args.option('prep')!)),
+          args.option('prep')!,
+        );
       case 'normalize':
         _runNormalize(patcher);
       case 'audit':
-        final report = patcher.patchDryRunReport(overrides);
+        final report = patcher.patchDryRunReport(
+          _loadOverrides(p.join(root, args.option('overrides')!)),
+        );
         _printAudit(report, args.option('overrides')!);
         if (args.flag('strict') && !report.isClean) exitCode = 1;
       case 'reorganize':
         final result = patcher.reorganizeModels();
         stdout.writeln('  ${result.describe()}');
       case 'patch':
-        final result = patcher.patch(overrides);
+        final result = patcher.patch(
+          _loadOverrides(p.join(root, args.option('overrides')!)),
+        );
         _printPatch(result);
         _printAudit(result.report, args.option('overrides')!);
         if (args.flag('strict') && !result.report.isClean) exitCode = 1;
     }
+  } on EnumOverrideFormatException catch (e) {
+    stderr.writeln(
+      'Error: could not read ${args.option('overrides')} — ${e.message}',
+    );
+    exitCode = 1;
+  } on SchemaPrepFormatException catch (e) {
+    stderr.writeln(
+      'Error: could not read ${args.option('prep')} — ${e.message}',
+    );
+    exitCode = 1;
   } on SchemaFormatException catch (e) {
     stderr.writeln('Error: $e');
     exitCode = 1;

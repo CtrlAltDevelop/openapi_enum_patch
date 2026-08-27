@@ -10,6 +10,7 @@ class EnumEntry {
     required this.fileStem,
     required this.values,
     required this.isIntegerEnum,
+    this.schemaNames = const {},
   });
 
   /// The `components.schemas` key, e.g. `CRM.Enums.AccountStatus`.
@@ -25,9 +26,22 @@ class EnumEntry {
   final List<Object> values;
 
   /// Integer enums carry no member names in OpenAPI, so they generate as
-  /// `value0`, `value1`, … and always need an override. String enums take
+  /// `value0`, `value1`, … and need naming from somewhere. String enums take
   /// their member names from the values themselves and never do.
   final bool isIntegerEnum;
+
+  /// Member names the export declares for itself, as `value -> name`.
+  ///
+  /// OpenAPI has no field for them, but most exporters write them into a
+  /// vendor extension anyway — `x-enum-varnames`, `x-enumNames` or
+  /// `x-ms-enum`. An `enum_overrides.yaml` entry outranks them, so a project
+  /// can still rename what the export got wrong.
+  final Map<Object, String> schemaNames;
+
+  /// Whether the export names every value this enum declares, so no override
+  /// is needed for it at all.
+  bool get isSchemaNamed =>
+      values.isNotEmpty && values.every(schemaNames.containsKey);
 
   @override
   String toString() => 'EnumEntry($schemaKey -> $className)';

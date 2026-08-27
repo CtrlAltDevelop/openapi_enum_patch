@@ -84,4 +84,92 @@ void main() {
       ),
     );
   });
+
+  group('schema-declared member names', () {
+    test('reads x-enum-varnames zipped against the values', () {
+      final registry = const RegistryBuilder().buildFromJson('''
+{
+  "components": {
+    "schemas": {
+      "CRM.Enums.AccountStatus": {
+        "type": "integer",
+        "enum": [0, 1, 2],
+        "x-enum-varnames": ["Active", "Suspended", "Closed"]
+      }
+    }
+  }
+}
+''');
+
+      final entry = registry.byStem('crm_enums_account_status')!;
+      expect(entry.schemaNames, {0: 'Active', 1: 'Suspended', 2: 'Closed'});
+      expect(entry.isSchemaNamed, isTrue);
+    });
+
+    test('reads the NSwag x-enumNames spelling', () {
+      final registry = const RegistryBuilder().buildFromYaml('''
+components:
+  schemas:
+    CRM.Enums.Platform:
+      type: integer
+      enum: [1, 2]
+      x-enumNames: [Web, Mobile]
+''');
+
+      expect(registry.byStem('crm_enums_platform')!.schemaNames, {
+        1: 'Web',
+        2: 'Mobile',
+      });
+    });
+
+    test('reads x-ms-enum, which pairs each name with its value', () {
+      final registry = const RegistryBuilder().buildFromYaml('''
+components:
+  schemas:
+    CRM.Enums.Tier:
+      type: integer
+      enum: [10, 20]
+      x-ms-enum:
+        name: Tier
+        values:
+          - value: 20
+            name: Gold
+          - value: 10
+            name: Silver
+''');
+
+      expect(registry.byStem('crm_enums_tier')!.schemaNames, {
+        20: 'Gold',
+        10: 'Silver',
+      });
+    });
+
+    test('names the values a truncated list reaches and no more', () {
+      final registry = const RegistryBuilder().buildFromYaml('''
+components:
+  schemas:
+    CRM.Enums.Partial:
+      type: integer
+      enum: [0, 1, 2]
+      x-enum-varnames: [First, '']
+''');
+
+      final entry = registry.byStem('crm_enums_partial')!;
+      expect(entry.schemaNames, {0: 'First'});
+      expect(entry.isSchemaNamed, isFalse);
+    });
+
+    test('leaves schemaNames empty when the export declares none', () {
+      final registry = const RegistryBuilder().buildFromYaml('''
+components:
+  schemas:
+    CRM.Enums.Bare:
+      type: integer
+      enum: [0, 1]
+''');
+
+      expect(registry.byStem('crm_enums_bare')!.schemaNames, isEmpty);
+      expect(registry.byStem('crm_enums_bare')!.isSchemaNamed, isFalse);
+    });
+  });
 }

@@ -25,14 +25,17 @@ void main(List<String> arguments) {
   // Inspect the registry directly — every enum the schemas declare.
   final registry = patcher.buildRegistry();
   final integerEnums = registry.all.where((e) => e.isIntegerEnum).length;
+  final selfNaming = registry.all.where((e) => e.isSchemaNamed).length;
   stdout.writeln(
-    'Found ${registry.all.length} enum(s), $integerEnums of them integer.',
+    'Found ${registry.all.length} enum(s), $integerEnums of them integer, '
+    '$selfNaming already named by the export.',
   );
 
   final report = patcher.patchDryRunReport(overrides);
   stdout.write(
-    const AuditFormatter(overridesPath: 'swagger_tools/enum_overrides.yaml')
-        .format(report),
+    const AuditFormatter(
+      overridesPath: 'swagger_tools/enum_overrides.yaml',
+    ).format(report),
   );
 
   if (!report.isClean) exitCode = 1;

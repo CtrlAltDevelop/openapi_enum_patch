@@ -5,6 +5,7 @@ abstract final class DartNaming {
   static final RegExp _keySeparators = RegExp(r'[.`\[\],\s]+');
   static final RegExp _acronymBoundary = RegExp(r'([A-Z]+)([A-Z][a-z])');
   static final RegExp _wordBoundary = RegExp(r'([a-z\d])([A-Z])');
+  static final RegExp _nonIdentifier = RegExp(r'[^A-Za-z0-9_$]+');
 
   /// Dart reserved words that cannot appear bare as an enum member name.
   static const reservedWords = <String>{
@@ -89,9 +90,24 @@ abstract final class DartNaming {
       .replaceAllMapped(_wordBoundary, (m) => '${m[1]}_${m[2]}')
       .toLowerCase();
 
-  /// Appends `$` when [name] collides with a Dart reserved word.
-  static String safeMemberName(String name) =>
-      reservedWords.contains(name) ? '$name\$' : name;
+  /// Turns [name] into an identifier that compiles as an enum member.
+  ///
+  /// Override and schema-declared names are hand-written or exporter-written
+  /// text, so they may carry spaces, hyphens or a leading digit — all of which
+  /// generate a file the analyser rejects. Runs of characters Dart does not
+  /// allow become a single `_`, a leading digit gets a `$` in front of it, and
+  /// a reserved word gets one after it.
+  static String safeMemberName(String name) {
+    final cleaned = name.trim().replaceAll(_nonIdentifier, '_');
+    if (cleaned.isEmpty) return r'$unnamed';
+    final identifier = _startsWithDigit(cleaned) ? '\$$cleaned' : cleaned;
+    return reservedWords.contains(identifier) ? '$identifier\$' : identifier;
+  }
+
+  static bool _startsWithDigit(String value) {
+    final code = value.codeUnitAt(0);
+    return code >= 0x30 && code <= 0x39;
+  }
 
   static String _normalizeSegment(String segment) => segment
       .replaceAllMapped(_acronymBoundary, (m) => '${m[1]}_${m[2]}')

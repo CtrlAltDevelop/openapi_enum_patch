@@ -92,12 +92,21 @@ class DartMappableEnumEmitter implements EnumEmitter {
   }
 
   /// String values must be quoted; integers must not.
+  ///
+  /// A `$` has to be escaped along with the quote and the backslash: a value
+  /// like `USD$` would otherwise emit `'USD$'`, which Dart reads as the start
+  /// of an interpolation and refuses to compile. Control characters are
+  /// escaped too, so a value carrying a newline stays on one line.
   String _literal(Object value) {
     if (value is int) return '$value';
     final escaped = value
         .toString()
         .replaceAll(r'\', r'\\')
-        .replaceAll("'", r"\'");
+        .replaceAll(r'$', r'\$')
+        .replaceAll("'", r"\'")
+        .replaceAll('\n', r'\n')
+        .replaceAll('\r', r'\r')
+        .replaceAll('\t', r'\t');
     return "'$escaped'";
   }
 }

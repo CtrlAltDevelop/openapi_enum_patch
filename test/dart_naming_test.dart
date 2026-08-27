@@ -56,5 +56,29 @@ void main() {
     test('leaves ordinary names alone', () {
       expect(DartNaming.safeMemberName('fundamental'), 'fundamental');
     });
+
+    test('replaces characters Dart does not allow in an identifier', () {
+      expect(DartNaming.safeMemberName('in progress'), 'in_progress');
+      expect(DartNaming.safeMemberName('not-started'), 'not_started');
+      expect(DartNaming.safeMemberName('a  --  b'), 'a_b');
+    });
+
+    test('keeps a leading digit out of the first position', () {
+      expect(DartNaming.safeMemberName('2fa'), r'$2fa');
+      expect(DartNaming.safeMemberName('3'), r'$3');
+    });
+
+    test('trims surrounding whitespace', () {
+      expect(DartNaming.safeMemberName('  active  '), 'active');
+    });
+
+    test('falls back to a placeholder for a name with nothing usable', () {
+      expect(DartNaming.safeMemberName('   '), r'$unnamed');
+      expect(DartNaming.safeMemberName(''), r'$unnamed');
+    });
+
+    test('keeps a dollar sign, which is a legal identifier character', () {
+      expect(DartNaming.safeMemberName(r'usd$'), r'usd$');
+    });
   });
 }

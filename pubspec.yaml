@@ -3,7 +3,7 @@ description: >-
   Prepare an OpenAPI export for codegen, name the integer enums swagger_parser
   produces, generate the enum files it skips, and audit the enums that still
   need names.
-version: 1.2.1
+version: 1.3.0
 repository: https://github.com/CtrlAltDevelop/openapi_enum_patch
 issue_tracker: https://github.com/CtrlAltDevelop/openapi_enum_patch/issues
 
@@ -14,7 +14,7 @@ topics:
   - enums
 
 environment:
-  sdk: ^3.13.0
+  sdk: ^3.12.0
 
 dependencies:
   args: ^2.7.0

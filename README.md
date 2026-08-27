@@ -15,9 +15,11 @@ generated client ends up like this:
 if (account.status == CrmEnumsAccountStatus.value2) { … }
 ```
 
-There is no way to fix that from the schema alone, and no `swagger_parser`
-option for it. This package lets you supply the names once, in a YAML file, and
-reapplies them automatically after every regeneration.
+There is no `swagger_parser` option for it. This package lets you supply the
+names once, in a YAML file, and reapplies them automatically after every
+regeneration — and where the export kept the names in a vendor extension
+(`x-enum-varnames` and friends), it reads them straight out of the schema and
+you supply nothing.
 
 ```dart
 if (account.status == CrmEnumsAccountStatus.disabled) { … }
@@ -245,6 +247,12 @@ back as a number, a boolean or `null` is quoted.
 
 ## Naming enums
 
+Names come from two places, and the first one that has a name for a value wins:
+
+1. **`enum_overrides.yaml`** — what this project decided the members are called.
+2. **The export itself** — the member names most exporters write into a vendor
+   extension even though OpenAPI has no field for them.
+
 ```yaml
 enums:
   "CRM.Enums.AccountStatus":
@@ -256,9 +264,46 @@ enums:
       - 3
 ```
 
-Values without a name still generate as `valueN`. Names colliding with a Dart
-reserved word get a `$` suffix. String enums never need an override — their
-member names come from the values.
+Values without a name still generate as `valueN`. String enums never need an
+override — their member names come from the values.
+
+Every name is made into a legal identifier before it is emitted: characters
+Dart does not allow become `_` (`in progress` → `in_progress`), a leading digit
+gets a `$` in front of it (`2fa` → `$2fa`), and a reserved word gets one after
+it (`class` → `class$`). Two values asking for the same name are emitted as
+`name$1` and `name$2` and reported by the audit — a collision is a naming
+mistake to fix, not something to resolve silently.
+
+### Names the export already carries
+
+An integer enum is only nameless because OpenAPI has nowhere to put the names.
+Most exporters keep them anyway, in one of three extensions, and `patch` reads
+all three — so an export that carries them needs no `enum_overrides.yaml` entry
+at all:
+
+```yaml
+components:
+  schemas:
+    CRM.Enums.AccountStatus:
+      type: integer
+      enum: [0, 1, 2]
+      x-enum-varnames: [active, archived, disabled]   # openapi-generator
+```
+
+| Extension | Written by |
+| --- | --- |
+| `x-enum-varnames` | openapi-generator, drf-spectacular |
+| `x-enumNames` (or `x-enum-names`) | NSwag and the .NET exporters |
+| `x-ms-enum: {values: [{value: 0, name: Active}]}` | AutoRest, Azure |
+
+The list forms run parallel to `enum` and are zipped with it, so a truncated or
+partly blank list still names the values it reaches; the audit asks for the
+rest. `x-ms-enum` pairs each name with its value, so its order does not matter.
+
+An `enum_overrides.yaml` entry outranks the export value by value, which means a
+project can rename just the members it disagrees with and leave the rest to the
+exporter. Nothing has to be turned on: an export without these extensions
+behaves exactly as before.
 
 ## The audit
 
@@ -269,20 +314,27 @@ Every `patch` run ends with a coverage report:
   MISSING OVERRIDE (2): integer enums generate as value0, value1, …
     - CRM.Enums.BSCDepositStatus  (CrmEnumsBscDepositStatus)  values: [0, 1, 2]
     - SocialService.InvestorStatus  (SocialServiceInvestorStatus)  values: [0, 1]
-  MISSING NAMES (1): override exists but does not name every value
+  MISSING NAMES (1): the names given do not cover every value
     - CRM.Enums.AccountStatus  (CrmEnumsAccountStatus)  unnamed: [3]
   STALE NAMES (1): override names a value absent from the schema
     - CRM.Enums.AccountStatus  (CrmEnumsAccountStatus)  unknown: [9]
+  DUPLICATE NAMES (1): two values share one member name, emitted as name$1, name$2
+    - CRM.Enums.Tier  (CrmEnumsTier)  shared by "gold": [2, 5]
+  4 enum(s) took their member names from the export itself; no override needed.
   ─────────────────────────────────────────────────────────────────
 ```
 
-- **MISSING OVERRIDE** — no entry at all. Add one.
-- **MISSING NAMES** — the entry exists but does not cover every value.
+- **MISSING OVERRIDE** — nothing names it, export included. Add an entry.
+- **MISSING NAMES** — the names it does have do not cover every value.
 - **STALE NAMES** — names a value the schema dropped, usually after a refresh.
   Remove it, or move it to `extra` if the API still returns it.
+- **DUPLICATE NAMES** — two values resolved to one Dart member name, so they
+  were emitted as `gold$1` and `gold$2`. Rename one of them.
 
 Only enums actually generated for your project are considered, so unused schema
-enums stay quiet. The audit is report-only unless you pass `--strict`, which
+enums stay quiet. Duplicate names are checked for string enums too, since a
+schema declaring both `Draft` and `draft` folds them onto one member without any
+override being involved. The audit is report-only unless you pass `--strict`, which
 makes it a CI gate.
 
 ## What `prepare` fixes
@@ -419,6 +471,12 @@ final patcher = EnumPatcher(root: '.', config: config);
 final result = patcher.patch(overrides);
 print(const AuditFormatter().format(result.report));
 ```
+
+`EnumEntry.schemaNames` carries whatever the export declared for itself and
+`EnumEntry.isSchemaNamed` says whether that covers every value;
+`AuditReport.schemaNamed` counts the enums that needed no override because of
+it. `packageVersion` is the published version, the same string `--version`
+prints.
 
 To target a serializer other than `dart_mappable`, implement `EnumEmitter` and
 pass it to `EnumPatcher`; the registry, override and audit machinery is

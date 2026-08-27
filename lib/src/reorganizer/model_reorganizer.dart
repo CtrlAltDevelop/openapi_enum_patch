@@ -181,8 +181,9 @@ class ModelReorganizer {
 
   void _applyMoves(Directory modelsDir, Map<String, _Move> moves) {
     for (final entry in moves.entries) {
-      Directory(p.dirname(_destination(modelsDir, entry.value, _dartExtension)))
-          .createSync(recursive: true);
+      Directory(
+        p.dirname(_destination(modelsDir, entry.value, _dartExtension)),
+      ).createSync(recursive: true);
 
       for (final extension in const [_dartExtension, _mapperExtension]) {
         final source = File(p.join(modelsDir.path, '${entry.key}$extension'));
