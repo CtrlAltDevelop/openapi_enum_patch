@@ -172,4 +172,16 @@ components:
       expect(registry.byStem('crm_enums_bare')!.isSchemaNamed, isFalse);
     });
   });
+
+  test('records a schema overwritten by another with the same file stem', () {
+    final registry = _builder.buildFromJson('''
+{"components": {"schemas": {
+  "Crm.Status": {"type": "string", "enum": ["a"]},
+  "CrmStatus": {"type": "string", "enum": ["b"]}
+}}}
+''');
+
+    expect(registry.entries.keys, ['crm_status']);
+    expect(registry.shadowed, {'Crm.Status': 'CrmStatus'});
+  });
 }

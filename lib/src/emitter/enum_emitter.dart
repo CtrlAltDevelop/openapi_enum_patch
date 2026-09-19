@@ -22,7 +22,8 @@ class ResolvedMembers {
   /// Each value takes its name from the first source that has one — the
   /// override, then the names the export declares, then the `valueN` fallback
   /// that made this package necessary.
-  factory ResolvedMembers.resolve(EnumEntry entry, EnumOverride override) {
+  factory ResolvedMembers.resolve(EnumEntry entry, EnumOverride rawOverride) {
+    final override = rawOverride.alignedTo(entry.values);
     final values = <Object>[
       ...entry.values,
       ...override.extra.where((value) => !entry.values.contains(value)),

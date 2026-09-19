@@ -107,7 +107,9 @@ class EnumAuditor {
         continue;
       }
 
-      final override = overrides.overrideFor(entry.schemaKey);
+      final override = overrides
+          .overrideFor(entry.schemaKey)
+          .alignedTo(entry.values);
 
       // Collisions are checked for every enum, string ones included: a string
       // enum declaring both `Draft` and `draft` lowercases them onto one

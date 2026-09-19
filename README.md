@@ -1,5 +1,10 @@
 # openapi_enum_patch
 
+[![pub package](https://img.shields.io/pub/v/openapi_enum_patch.svg)](https://pub.dev/packages/openapi_enum_patch)
+[![pub points](https://img.shields.io/pub/points/openapi_enum_patch)](https://pub.dev/packages/openapi_enum_patch/score)
+[![CI](https://github.com/CtrlAltDevelop/openapi_enum_patch/actions/workflows/ci.yml/badge.svg)](https://github.com/CtrlAltDevelop/openapi_enum_patch/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/CtrlAltDevelop/openapi_enum_patch/blob/main/LICENSE)
+
 Prepare an OpenAPI export for code generation, give real names to the integer
 enums [`swagger_parser`][sp] generates from it, fill in the enum files it skips,
 and audit which enums still need naming.
@@ -30,7 +35,7 @@ otherwise silently rots as the API grows.
 
 ## Requirements
 
-Dart SDK `^3.13.0` — verified against Dart 3.13.0 and Flutter 3.47.0. This is a
+Dart SDK `^3.12.0` — verified against Dart 3.13.0 and Flutter 3.47.0. This is a
 pure Dart CLI package, so it carries no Flutter SDK constraint and works from
 either a `dart` or a `flutter` project.
 
@@ -45,8 +50,8 @@ Or add it to `pubspec.yaml` yourself. It is a build-time tool, so it belongs in
 
 ```yaml
 dev_dependencies:
-  openapi_enum_patch: ^1.2.0
-  swagger_parser: ^1.44.1   # the generator this wraps
+  openapi_enum_patch: ">=1.3.1 <2.0.0"
+  swagger_parser: ">=1.44.1 <2.0.0"   # the generator this wraps
 ```
 
 then:

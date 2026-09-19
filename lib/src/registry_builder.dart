@@ -21,10 +21,18 @@ class RegistryBuilder {
   /// the generator's own last-writer-wins behaviour.
   EnumRegistry build(Iterable<Map<String, Object?>> documents) {
     final entries = <String, EnumEntry>{};
+    final shadowed = <String, String>{};
     for (final document in documents) {
-      entries.addAll(_entriesOf(document));
+      for (final entry in _entriesOf(document)) {
+        final previous = entries[entry.fileStem];
+        if (previous != null && previous.schemaKey != entry.schemaKey) {
+          shadowed[previous.schemaKey] = entry.schemaKey;
+        }
+        entries[entry.fileStem] = entry;
+        shadowed.remove(entry.schemaKey);
+      }
     }
-    return EnumRegistry(entries);
+    return EnumRegistry(entries, shadowed: shadowed);
   }
 
   /// Builds a registry from a single JSON document.
@@ -75,13 +83,13 @@ class RegistryBuilder {
     return prefixes;
   }
 
-  Map<String, EnumEntry> _entriesOf(Map<String, Object?> document) {
+  List<EnumEntry> _entriesOf(Map<String, Object?> document) {
     final components = document['components'];
-    if (components is! Map) return const {};
+    if (components is! Map) return const [];
     final schemas = components['schemas'];
-    if (schemas is! Map) return const {};
+    if (schemas is! Map) return const [];
 
-    final entries = <String, EnumEntry>{};
+    final entries = <EnumEntry>[];
     for (final entry in schemas.entries) {
       final schema = entry.value;
       if (schema is! Map) continue;
@@ -93,13 +101,15 @@ class RegistryBuilder {
       final fileStem = DartNaming.toFileStem(className);
       final declared = values.whereType<Object>().toList(growable: false);
 
-      entries[fileStem] = EnumEntry(
-        schemaKey: schemaKey,
-        className: className,
-        fileStem: fileStem,
-        values: declared,
-        isIntegerEnum: _isIntegerEnum(schema, declared),
-        schemaNames: _schemaNames(schema, declared),
+      entries.add(
+        EnumEntry(
+          schemaKey: schemaKey,
+          className: className,
+          fileStem: fileStem,
+          values: declared,
+          isIntegerEnum: _isIntegerEnum(schema, declared),
+          schemaNames: _schemaNames(schema, declared),
+        ),
       );
     }
     return entries;

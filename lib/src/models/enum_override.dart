@@ -12,6 +12,21 @@ class EnumOverride {
   /// Values the API returns but the schema does not yet declare.
   final List<Object> extra;
 
+  /// Re-keys this override to the value types [declared] uses.
+  ///
+  /// YAML turns `1` into an int wherever it is unquoted, so a string enum that
+  /// declares `"1"` would never match its own override. Each key is matched to
+  /// the declared value that prints the same, and kept as written when none does.
+  EnumOverride alignedTo(List<Object> declared) {
+    if (isEmpty) return this;
+    final byText = {for (final value in declared) value.toString(): value};
+    Object align(Object key) => byText[key.toString()] ?? key;
+    return EnumOverride(
+      names: {for (final e in names.entries) align(e.key): e.value},
+      extra: [for (final value in extra) align(value)],
+    );
+  }
+
   bool get isEmpty => names.isEmpty && extra.isEmpty;
   bool get isNotEmpty => !isEmpty;
 

@@ -53,6 +53,26 @@ void main() {
       expect(DartNaming.safeMemberName('in'), r'in$');
     });
 
+    test('suffixes names every enum already owns', () {
+      expect(DartNaming.safeMemberName('values'), r'values$');
+      expect(DartNaming.safeMemberName('index'), r'index$');
+      expect(DartNaming.safeMemberName('hashCode'), r'hashCode$');
+      expect(DartNaming.safeMemberName('toJson'), r'toJson$');
+    });
+
+    test('leaves contextual keywords alone', () {
+      expect(DartNaming.safeMemberName('type'), 'type');
+      expect(DartNaming.safeMemberName('required'), 'required');
+    });
+
+    test('spells non-ASCII letters out so distinct names stay distinct', () {
+      expect(DartNaming.safeMemberName('Étoile'), 'u00c9toile');
+      expect(
+        DartNaming.safeMemberName('日本'),
+        isNot(DartNaming.safeMemberName('中国')),
+      );
+    });
+
     test('leaves ordinary names alone', () {
       expect(DartNaming.safeMemberName('fundamental'), 'fundamental');
     });

@@ -7,74 +7,57 @@ abstract final class DartNaming {
   static final RegExp _wordBoundary = RegExp(r'([a-z\d])([A-Z])');
   static final RegExp _nonIdentifier = RegExp(r'[^A-Za-z0-9_$]+');
 
-  /// Dart reserved words that cannot appear bare as an enum member name.
+  /// Dart reserved words, which cannot appear bare as an enum member name.
+  ///
+  /// Built-in and contextual identifiers (`type`, `get`, `on`, `required`, …)
+  /// are legal member names and are deliberately absent.
   static const reservedWords = <String>{
-    'abstract',
-    'as',
     'assert',
-    'async',
-    'await',
     'break',
     'case',
     'catch',
     'class',
     'const',
     'continue',
-    'covariant',
     'default',
-    'deferred',
     'do',
-    'dynamic',
     'else',
     'enum',
-    'export',
     'extends',
-    'extension',
-    'external',
-    'factory',
     'false',
     'final',
     'finally',
     'for',
-    'function',
-    'get',
-    'hide',
     'if',
-    'implements',
-    'import',
     'in',
-    'interface',
     'is',
-    'late',
-    'library',
-    'mixin',
     'new',
     'null',
-    'of',
-    'on',
-    'operator',
-    'part',
-    'required',
     'rethrow',
     'return',
-    'set',
-    'show',
-    'static',
     'super',
     'switch',
-    'sync',
     'this',
     'throw',
     'true',
     'try',
-    'type',
-    'typedef',
     'var',
     'void',
-    'when',
     'while',
     'with',
-    'yield',
+  };
+
+  /// Names an enum member cannot take because every enum already has a member
+  /// or static of that name — `values` is declared by the language, the rest
+  /// are inherited from `Enum`/`Object` — or because the emitter declares it.
+  static const enumMemberClashes = <String>{
+    'values',
+    'index',
+    'hashCode',
+    'runtimeType',
+    'toString',
+    'noSuchMethod',
+    'toJson',
   };
 
   /// `AIAnalyst.Enums.Analysis.ModeType` → `AiAnalystEnumsAnalysisModeType`.
@@ -95,14 +78,34 @@ abstract final class DartNaming {
   /// Override and schema-declared names are hand-written or exporter-written
   /// text, so they may carry spaces, hyphens or a leading digit — all of which
   /// generate a file the analyser rejects. Runs of characters Dart does not
-  /// allow become a single `_`, a leading digit gets a `$` in front of it, and
-  /// a reserved word gets one after it.
+  /// allow become a single `_` (a non-ASCII letter becomes `u` and its code
+  /// point in hex, so distinct characters stay distinct), a leading digit gets a `$` in front of it, and
+  /// a reserved word or a name every enum already owns (`values`, `index`, …)
+  /// gets one after it.
   static String safeMemberName(String name) {
-    final cleaned = name.trim().replaceAll(_nonIdentifier, '_');
+    final cleaned = _spellNonAscii(name.trim()).replaceAll(_nonIdentifier, '_');
     if (cleaned.isEmpty) return r'$unnamed';
     final identifier = _startsWithDigit(cleaned) ? '\$$cleaned' : cleaned;
-    return reservedWords.contains(identifier) ? '$identifier\$' : identifier;
+    return reservedWords.contains(identifier) ||
+            enumMemberClashes.contains(identifier)
+        ? '$identifier\$'
+        : identifier;
   }
+
+  /// `Étoile` → `u00c9toile`. Only letters are spelled out; punctuation and
+  /// whitespace still collapse to `_` afterwards.
+  static String _spellNonAscii(String value) => value.runes
+      .map(
+        (rune) => rune > 0x7f && _isLetter(rune)
+            ? 'u${rune.toRadixString(16).padLeft(4, '0')}'
+            : String.fromCharCode(rune),
+      )
+      .join();
+
+  static final RegExp _letter = RegExp(r'\p{L}', unicode: true);
+
+  static bool _isLetter(int rune) =>
+      _letter.hasMatch(String.fromCharCode(rune));
 
   static bool _startsWithDigit(String value) {
     final code = value.codeUnitAt(0);

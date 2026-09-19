@@ -70,4 +70,17 @@ enums:
       throwsA(isA<EnumOverrideFormatException>()),
     );
   });
+
+  test('aligns an unquoted key to a string enum that declares it as text', () {
+    final override = EnumOverrides.parse('''
+enums:
+  A:
+    names:
+      1: one
+    extra: [2]
+''').overrideFor('A').alignedTo(['1']);
+
+    expect(override.names, {'1': 'one'});
+    expect(override.extra, [2]);
+  });
 }

@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.3.1
+
+- **Fixes to generated enum member names.**
+  - A value named `values`, `index`, `hashCode`, `runtimeType`, `toString`,
+    `noSuchMethod` or `toJson` now gets a `$` suffix; it used to generate a file
+    that did not compile.
+  - Non-ASCII letters are spelled out (`Étoile` → `u00c9toile`) instead of all
+    collapsing to `_`, so distinct values no longer collide.
+  - Only real Dart reserved words are suffixed. Contextual keywords such as
+    `type`, `get` and `required` are legal member names and now generate as
+    written (previously `type$`, …), so regenerating renames those members.
+- An unquoted number in `enum_overrides.yaml` now matches a string enum that
+  declares it as text (`"1"`).
+- An override for a schema that generates to the same file as a later schema is
+  reported as ignored, rather than as "not in any schema".
+- No change to the published code. CI moved to the shared reusable workflow in
+  CtrlAltDevelop/ci-workflows: formatting, `analyze --fatal-infos`, the tests,
+  the example, a changelog entry per version, and a pana score with no points
+  lost — the same gate across every package here.
+- Dependency bounds are explicit ranges rather than carets — a floor that
+  resolves on the supported SDK, the next major as the ceiling — so a consumer
+  already on an older version in the same major is not forced to move.
+- The README carries the pub, pub points, CI and licence badges the other
+  packages here carry.
+
 ## 1.3.0
 
 - **Enum member names are now read from the export itself.** OpenAPI has nowhere

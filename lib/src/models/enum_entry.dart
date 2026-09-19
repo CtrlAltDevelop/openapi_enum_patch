@@ -50,9 +50,13 @@ class EnumEntry {
 /// Every enum schema discovered across all parsed OpenAPI documents.
 @immutable
 class EnumRegistry {
-  const EnumRegistry(this.entries);
+  const EnumRegistry(this.entries, {this.shadowed = const {}});
 
-  const EnumRegistry.empty() : entries = const {};
+  const EnumRegistry.empty() : entries = const {}, shadowed = const {};
+
+  /// Schema keys that generate to the same file as a later schema and so were
+  /// overwritten, as `shadowed key -> the key that won`.
+  final Map<String, String> shadowed;
 
   /// Keyed by [EnumEntry.fileStem], matching how generated files are named.
   final Map<String, EnumEntry> entries;

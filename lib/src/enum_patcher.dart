@@ -23,6 +23,7 @@ class PatchResult {
     required this.overridden,
     required this.report,
     required this.unknownOverrideKeys,
+    this.shadowedOverrideKeys = const {},
     required this.unresolvedImports,
   });
 
@@ -36,6 +37,10 @@ class PatchResult {
 
   /// Override keys that match no schema — usually a typo or a renamed schema.
   final List<String> unknownOverrideKeys;
+
+  /// Override keys whose schema generates to the same file as a later one, as
+  /// `key -> the schema that overwrote it`. The override is never applied.
+  final Map<String, String> shadowedOverrideKeys;
 
   /// Imports that are missing and are not enums in any schema, so this package
   /// cannot synthesise them.
@@ -218,12 +223,18 @@ class EnumPatcher {
     // Pass 2 — re-emit existing files so overrides take effect.
     final overridden = <String, String>{};
     final unknownKeys = <String>[];
+    final shadowedKeys = <String, String>{};
     for (final entry in overrides.bySchemaKey.entries) {
       if (entry.value.isEmpty) continue;
 
       final stem = stemsByKey[entry.key];
       if (stem == null) {
-        unknownKeys.add(entry.key);
+        final winner = registry.shadowed[entry.key];
+        if (winner != null) {
+          shadowedKeys[entry.key] = winner;
+        } else {
+          unknownKeys.add(entry.key);
+        }
         continue;
       }
       if (generated.contains(stem)) continue; // Already written with overrides.
@@ -237,6 +248,7 @@ class EnumPatcher {
       generated: generated,
       overridden: overridden,
       unknownOverrideKeys: unknownKeys..sort(),
+      shadowedOverrideKeys: shadowedKeys,
       unresolvedImports: unresolved..sort(),
       report: _auditor.audit(
         registry: registry,

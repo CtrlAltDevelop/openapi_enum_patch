@@ -172,6 +172,12 @@ void _printPatch(PatchResult result) {
   for (final key in result.unknownOverrideKeys) {
     stderr.writeln('  WARNING: override key "$key" is not in any schema');
   }
+  for (final entry in result.shadowedOverrideKeys.entries) {
+    stderr.writeln(
+      '  WARNING: override key "${entry.key}" is ignored: its schema generates '
+      'the same file as "${entry.value}", which overwrites it',
+    );
+  }
   for (final stem in result.unresolvedImports) {
     stderr.writeln(
       '  WARNING: import "$stem" is missing and is not an enum in any schema',
